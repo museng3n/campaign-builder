@@ -1,0 +1,980 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Mail, Clock, CheckCircle2, X } from "lucide-react"
+import Link from "next/link"
+import { popularTemplates } from "@/lib/campaign-templates"
+
+const steps = [
+  { name: "Template", nameAr: "قالب" },
+  { name: "Details", nameAr: "التفاصيل" },
+  { name: "Audience", nameAr: "الجمهور" },
+  { name: "Sequence", nameAr: "التسلسل" },
+  { name: "Emails", nameAr: "الرسائل" },
+  { name: "Settings", nameAr: "الإعدادات" },
+  { name: "Review", nameAr: "المراجعة" },
+]
+
+export default function CreateCampaignPage() {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState("popular")
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewTemplate, setPreviewTemplate] = useState<any>(null)
+
+  const [campaignData, setCampaignData] = useState({
+    name: "",
+    goal: "",
+    industry: "",
+    description: "",
+    tags: [] as string[],
+    audience: {
+      temperature: ["warm"],
+      sources: ["csv", "apollo"],
+      filters: { industry: "", location: "", tags: "", groups: "" },
+      exclusions: { unsubscribed: true, bounced: true, activeCampaigns: false },
+    },
+    sendSchedule: {
+      timing: "best",
+      days: ["mon", "tue", "wed", "thu", "fri"],
+      dailyLimit: 50,
+      warmup: true,
+    },
+  })
+
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleTemplateSelect = (template: any) => {
+    setSelectedTemplate(template)
+    handleNext()
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6]" dir="rtl">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4 mb-6">
+            <Link href="/campaigns">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Create New Campaign</h1>
+              <p className="text-sm text-gray-600">إنشاء حملة جديدة</p>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  {/* Step Circle */}
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                      index < currentStep
+                        ? "bg-[#7C3AED] text-white"
+                        : index === currentStep
+                          ? "bg-[#7C3AED] text-white"
+                          : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {index < currentStep ? <CheckCircle2 className="w-5 h-5" /> : <span>{index + 1}</span>}
+                  </div>
+
+                  {/* Step Label */}
+                  <div
+                    className={`text-xs mt-2 font-medium ${index === currentStep ? "text-[#7C3AED]" : "text-gray-500"}`}
+                  >
+                    {step.name}
+                  </div>
+                </div>
+
+                {/* Connector Line */}
+                {index < steps.length - 1 && (
+                  <div className={`h-0.5 flex-1 mb-6 ${index < currentStep ? "bg-[#7C3AED]" : "bg-gray-300"}`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Step 1: Choose Template */}
+        {currentStep === 0 && (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Start with a proven template</h2>
+              <p className="text-gray-600">ابدأ بقالب مجرب</p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 justify-center mb-8">
+              <Button
+                variant={activeTab === "popular" ? "default" : "outline"}
+                onClick={() => setActiveTab("popular")}
+                className={activeTab === "popular" ? "bg-[#7C3AED]" : ""}
+              >
+                🔥 Popular
+              </Button>
+              <Button
+                variant={activeTab === "goal" ? "default" : "outline"}
+                onClick={() => setActiveTab("goal")}
+                className={activeTab === "goal" ? "bg-[#7C3AED]" : ""}
+              >
+                🎯 By Goal
+              </Button>
+              <Button
+                variant={activeTab === "industry" ? "default" : "outline"}
+                onClick={() => setActiveTab("industry")}
+                className={activeTab === "industry" ? "bg-[#7C3AED]" : ""}
+              >
+                🏭 By Industry
+              </Button>
+              <Button
+                variant={activeTab === "blank" ? "default" : "outline"}
+                onClick={() => setActiveTab("blank")}
+                className={activeTab === "blank" ? "bg-[#7C3AED]" : ""}
+              >
+                ⚡ Blank
+              </Button>
+            </div>
+
+            {/* Template Grid */}
+            {activeTab === "popular" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {popularTemplates.map((template) => (
+                  <Card
+                    key={template.id}
+                    className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#7C3AED]"
+                  >
+                    <CardContent className="p-6">
+                      {/* Badge */}
+                      <div className="flex items-center justify-between mb-4">
+                        <Badge className="bg-purple-100 text-[#7C3AED] hover:bg-purple-100">{template.badge}</Badge>
+                        <span className="text-xs text-gray-500">by {template.author}</span>
+                      </div>
+
+                      {/* Template Name */}
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">{template.name}</h3>
+                      <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+
+                      {/* Sequence Info */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Mail className="w-4 h-4" />
+                          <span>{template.emails} emails</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Clock className="w-4 h-4" />
+                          <span>{template.days} days</span>
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Open Rate</div>
+                          <div className="text-lg font-bold text-[#10B981]">{template.stats.avgOpenRate}%</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Reply Rate</div>
+                          <div className="text-lg font-bold text-[#7C3AED]">{template.stats.avgReplyRate}%</div>
+                        </div>
+                      </div>
+
+                      {/* Usage */}
+                      <div className="text-xs text-gray-500 mb-4">
+                        Used {template.stats.usedCount.toLocaleString()} times
+                      </div>
+
+                      {/* Best For Tags */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {template.bestFor.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="bg-blue-50 text-blue-600">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-[#7C3AED] text-[#7C3AED] bg-transparent"
+                          onClick={() => {
+                            setPreviewTemplate(template)
+                            setShowPreview(true)
+                          }}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
+                          onClick={() => handleTemplateSelect(template)}
+                        >
+                          Use Template
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {activeTab === "blank" && (
+              <Card className="max-w-2xl mx-auto">
+                <CardContent className="p-12 text-center">
+                  <div className="mb-6">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Start from Scratch</h3>
+                  <p className="text-gray-600 mb-6">Build your own custom sequence with full control</p>
+                  <Button
+                    className="bg-[#7C3AED] hover:bg-[#6D28D9]"
+                    onClick={() => handleTemplateSelect({ id: "blank", name: "Blank Template" })}
+                  >
+                    Create Blank Campaign
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Campaign Details */}
+        {currentStep === 1 && (
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="p-8 space-y-6">
+                <div>
+                  <Label htmlFor="name">Campaign Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Tech Startups Q4 Outreach"
+                    value={campaignData.name}
+                    onChange={(e) => setCampaignData({ ...campaignData, name: e.target.value })}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="goal">Goal</Label>
+                  <Select
+                    value={campaignData.goal}
+                    onValueChange={(value) => setCampaignData({ ...campaignData, goal: value })}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select a goal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="meeting">Book Meeting</SelectItem>
+                      <SelectItem value="demo">Demo Request</SelectItem>
+                      <SelectItem value="leads">Generate Leads</SelectItem>
+                      <SelectItem value="relationship">Build Relationship</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="industry">Industry</Label>
+                  <Select
+                    value={campaignData.industry}
+                    onValueChange={(value) => setCampaignData({ ...campaignData, industry: value })}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select an industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="saas">SaaS/Tech</SelectItem>
+                      <SelectItem value="ecommerce">E-commerce</SelectItem>
+                      <SelectItem value="realestate">Real Estate</SelectItem>
+                      <SelectItem value="agencies">Agencies</SelectItem>
+                      <SelectItem value="consulting">Consulting</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Brief description of campaign goals..."
+                    value={campaignData.description}
+                    onChange={(e) => setCampaignData({ ...campaignData, description: e.target.value })}
+                    className="mt-2"
+                    rows={4}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="tags">Tags</Label>
+                  <Input id="tags" placeholder="e.g., Q4, Tech, High-Value" className="mt-2" />
+                  <p className="text-xs text-gray-500 mt-1">Press Enter to add tags</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 3: Target Audience */}
+        {currentStep === 2 && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <Card>
+              <CardContent className="p-8 space-y-6">
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">1. Temperature Targeting</Label>
+                  <div className="space-y-3">
+                    {[
+                      { value: "cold", label: "Cold (Never contacted)" },
+                      { value: "warm", label: "Warm (Opened/Clicked before)" },
+                      { value: "hot", label: "Hot (Replied before)" },
+                      { value: "frozen", label: "Frozen (No activity 30+ days)" },
+                    ].map((temp) => (
+                      <div key={temp.value} className="flex items-center gap-2">
+                        <Checkbox id={temp.value} />
+                        <Label htmlFor={temp.value} className="font-normal">
+                          {temp.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">2. Source Filters</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      "CSV Import",
+                      "Apollo.io",
+                      "Hunter.io",
+                      "LinkedIn",
+                      "Instagram (engaged)",
+                      "Facebook",
+                      "Manual Entry",
+                    ].map((source) => (
+                      <div key={source} className="flex items-center gap-2">
+                        <Checkbox id={source} />
+                        <Label htmlFor={source} className="font-normal">
+                          {source}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">3. Advanced Filters</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="filter-industry">Industry</Label>
+                      <Input id="filter-industry" placeholder="Technology" className="mt-2" />
+                    </div>
+                    <div>
+                      <Label htmlFor="filter-location">Location</Label>
+                      <Input id="filter-location" placeholder="Dubai, UAE" className="mt-2" />
+                    </div>
+                    <div>
+                      <Label htmlFor="filter-tags">Tags</Label>
+                      <Input id="filter-tags" placeholder="VIP, Interested" className="mt-2" />
+                    </div>
+                    <div>
+                      <Label htmlFor="filter-groups">Groups</Label>
+                      <Input id="filter-groups" placeholder="Q4 Leads" className="mt-2" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">4. Exclusions</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="exclude-unsubscribed" defaultChecked />
+                      <Label htmlFor="exclude-unsubscribed" className="font-normal">
+                        Exclude unsubscribed
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="exclude-bounced" defaultChecked />
+                      <Label htmlFor="exclude-bounced" className="font-normal">
+                        Exclude bounced emails
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="exclude-active" />
+                      <Label htmlFor="exclude-active" className="font-normal">
+                        Exclude contacts in other campaigns
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-blue-900 mb-2">PREVIEW:</h4>
+                    <p className="text-blue-900 text-lg mb-2">
+                      Estimated Audience: <strong>234 contacts</strong>
+                    </p>
+                    <div className="space-y-1 text-sm text-blue-800">
+                      <p>• Cold: 89 (38%)</p>
+                      <p>• Warm: 123 (52%)</p>
+                      <p>• Hot: 22 (10%)</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 4: Sequence Builder */}
+        {currentStep === 3 && (
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardContent className="p-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold mb-2">Email Sequence</h3>
+                  <p className="text-gray-600">Pre-filled from template (editable)</p>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedTemplate?.structure?.map((email: any, index: number) => (
+                    <div key={index}>
+                      <Card className="border-l-4 border-l-[#7C3AED]">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                EMAIL {index + 1}: Day {email.day} - {email.type.replace("_", " ").toUpperCase()}
+                              </h4>
+                              <p className="text-sm text-gray-600 mt-1">{email.subject}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm">
+                                ✏️ Edit
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                🗑️ Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {index < (selectedTemplate?.structure?.length || 0) - 1 && (
+                        <Card className="my-2 bg-gray-50">
+                          <CardContent className="p-3 text-center">
+                            <p className="text-sm text-gray-600">⏱️ WAIT: {email.day} days</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <Button variant="outline" className="flex-1 bg-transparent">
+                    + Add Email Step
+                  </Button>
+                  <Button variant="outline" className="flex-1 bg-transparent">
+                    + Add Wait Time
+                  </Button>
+                </div>
+
+                <div className="mt-8 space-y-3">
+                  <Label className="font-semibold">Settings:</Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="stop-reply" defaultChecked />
+                    <Label htmlFor="stop-reply" className="font-normal">
+                      Stop sequence on reply
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="stop-unsubscribe" defaultChecked />
+                    <Label htmlFor="stop-unsubscribe" className="font-normal">
+                      Stop sequence on unsubscribe
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="continue-bounce" />
+                    <Label htmlFor="continue-bounce" className="font-normal">
+                      Continue if email bounces (not recommended)
+                    </Label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 5: Email Composer */}
+        {currentStep === 4 && (
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardContent className="p-8 space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Email 1: Pattern Interrupt (Day 0)</h3>
+                </div>
+
+                <div>
+                  <Label htmlFor="subject">Subject Line *</Label>
+                  <Input id="subject" placeholder="Noticed {{company}}'s recent {{achievement}}" className="mt-2" />
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">💡 AI Suggestions:</p>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Quick question about {"{company}"}</li>
+                      <li>
+                        • {"{firstName}"}, impressive work on {"{achievement}"}
+                      </li>
+                      <li>• Curious about your approach to {"{pain_point}"}</li>
+                    </ul>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Checkbox id="ab-test" />
+                    <Label htmlFor="ab-test" className="font-normal">
+                      Enable A/B testing (2 variants)
+                    </Label>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="body">Email Body *</Label>
+                  <Textarea
+                    id="body"
+                    className="mt-2 font-mono text-sm"
+                    rows={10}
+                    placeholder="Hi {{firstName}},
+
+Saw your recent {{achievement}} - impressive work on {{specific_detail}}.
+
+Quick question: Are you handling {{pain_point}} manually or have you found a better way?
+
+{{yourName}}"
+                  />
+                  <div className="mt-3 text-xs text-gray-500">
+                    <p className="mb-2">
+                      <strong>Variables Available:</strong>
+                    </p>
+                    <p>
+                      {"{firstName}"}, {"{lastName}"}, {"{company}"}, {"{industry}"}, {"{location}"}, {"{achievement}"},{" "}
+                      {"{pain_point}"}, {"{specific_detail}"}, {"{yourName}"}, {"{yourTitle}"}
+                    </p>
+                  </div>
+                </div>
+
+                <Card className="bg-gray-50">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold mb-3">PREVIEW</h4>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <strong>Subject:</strong> Noticed Triggerio's recent product launch
+                      </p>
+                      <div className="mt-3 whitespace-pre-line text-gray-700">
+                        Hi Haider,{"\n\n"}
+                        Saw your recent product launch - impressive work on the automation features.{"\n\n"}
+                        Quick question: Are you handling cold email warmup manually or have you found a better way?
+                        {"\n\n"}
+                        Alex
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-green-200 bg-green-50">
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-green-700 font-semibold">SPAM SCORE: 2/10 ✅</p>
+                        <p className="text-green-600">Excellent</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700 font-semibold">WORD COUNT: 42 ✅</p>
+                        <p className="text-green-600">Perfect</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700 font-semibold">READING TIME: 15s ✅</p>
+                        <p className="text-green-600">Good</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 6: Settings */}
+        {currentStep === 5 && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <Card>
+              <CardContent className="p-8 space-y-8">
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">1. Send Schedule</Label>
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input type="radio" id="best-time" name="timing" defaultChecked />
+                        <Label htmlFor="best-time" className="font-normal">
+                          Best time (AI optimized)
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="radio" id="specific-time" name="timing" />
+                        <Label htmlFor="specific-time" className="font-normal">
+                          Specific time
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="radio" id="random-time" name="timing" />
+                        <Label htmlFor="random-time" className="font-normal">
+                          Random time (between 09:00 - 17:00)
+                        </Label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="block mb-2">Days:</Label>
+                      <div className="flex gap-2">
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                          <Button
+                            key={day}
+                            variant={["Mon", "Tue", "Wed", "Thu", "Fri"].includes(day) ? "default" : "outline"}
+                            size="sm"
+                            className={["Mon", "Tue", "Wed", "Thu", "Fri"].includes(day) ? "bg-[#7C3AED]" : ""}
+                          >
+                            {day}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Card className="bg-blue-50 border-blue-200">
+                      <CardContent className="p-3 text-sm text-blue-900">
+                        💡 Industry benchmark: Tech companies respond best between 10-11 AM on Tue-Thu
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">2. Send Limits (Deliverability Protection)</Label>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="daily-limit">Daily send limit:</Label>
+                      <Select defaultValue="50">
+                        <SelectTrigger className="mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20">20 emails per day</SelectItem>
+                          <SelectItem value="30">30 emails per day</SelectItem>
+                          <SelectItem value="50">50 emails per day</SelectItem>
+                          <SelectItem value="100">100 emails per day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Card className="bg-orange-50 border-orange-200">
+                      <CardContent className="p-3 text-sm text-orange-900">
+                        <p className="mb-1">⚠️ Your domain age: 2 months</p>
+                        <p>Recommended limit: 30-50 emails/day</p>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="warmup" defaultChecked />
+                      <Label htmlFor="warmup" className="font-normal">
+                        Gradual warmup (Start 20/day, +10 every 3 days)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">3. Tracking</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="track-opens" defaultChecked />
+                      <Label htmlFor="track-opens" className="font-normal">
+                        Track email opens
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="track-clicks" defaultChecked />
+                      <Label htmlFor="track-clicks" className="font-normal">
+                        Track link clicks
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="track-replies" defaultChecked />
+                      <Label htmlFor="track-replies" className="font-normal">
+                        Track replies
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="unsubscribe-link" />
+                      <Label htmlFor="unsubscribe-link" className="font-normal">
+                        Add unsubscribe link (required by law)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 7: Review */}
+        {currentStep === 6 && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-4">📋 DETAILS</h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <strong>Name:</strong> {campaignData.name || "Tech Startups Q4 Outreach"}
+                    </p>
+                    <p>
+                      <strong>Goal:</strong> {campaignData.goal || "Book Meeting"}
+                    </p>
+                    <p>
+                      <strong>Industry:</strong> {campaignData.industry || "SaaS/Technology"}
+                    </p>
+                    <p>
+                      <strong>Template:</strong> {selectedTemplate?.name || "Alex Berman Pattern Interrupt"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-4">🎯 AUDIENCE</h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <strong>Total Contacts:</strong> 234
+                    </p>
+                    <p>• Cold: 89 (38%)</p>
+                    <p>• Warm: 123 (52%)</p>
+                    <p>• Hot: 22 (10%)</p>
+                    <p className="mt-3">
+                      <strong>Sources:</strong> CSV (156), Apollo (78)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-4">📧 SEQUENCE</h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <strong>
+                        {selectedTemplate?.emails || 5} emails over {selectedTemplate?.days || 10} days
+                      </strong>
+                    </p>
+                    {selectedTemplate?.structure?.map((email: any, index: number) => (
+                      <p key={index}>
+                        • Day {email.day}: {email.type.replace("_", " ")}
+                      </p>
+                    ))}
+                    <p className="mt-3">
+                      <strong>A/B Testing:</strong> Subject lines (50/50 split)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-4">⚙️ SETTINGS</h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <strong>Send Time:</strong> Best time (AI optimized)
+                    </p>
+                    <p>
+                      <strong>Daily Limit:</strong> 50 emails/day
+                    </p>
+                    <p>
+                      <strong>Warmup:</strong> Enabled (Start 20/day)
+                    </p>
+                    <p>
+                      <strong>Stop on Reply:</strong> Yes
+                    </p>
+                    <p>
+                      <strong>Tracking:</strong> Opens, Clicks, Replies
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-purple-50 border-[#7C3AED]">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-lg mb-4">📊 ESTIMATED RESULTS</h3>
+                <p className="text-sm text-gray-700 mb-2">Based on template benchmarks:</p>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>Total Sends:</strong> 1,170 emails
+                  </p>
+                  <p>
+                    <strong>Expected Opens:</strong> 274 (23.4%)
+                  </p>
+                  <p>
+                    <strong>Expected Replies:</strong> 19 (8.2%)
+                  </p>
+                  <p>
+                    <strong>Duration:</strong> ~15 days (with send limits)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-green-200">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-lg mb-4">⚠️ PRE-LAUNCH CHECKLIST</h3>
+                <div className="space-y-2 text-sm">
+                  {[
+                    "Campaign details complete",
+                    "Target audience defined",
+                    "Sequence configured",
+                    "All emails written",
+                    "Variables mapped",
+                    "Send limits set",
+                    "Domain verified",
+                  ].map((item) => (
+                    <div key={item} className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Spam score check: 2/10 (Good)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
+            ← Back
+          </Button>
+
+          <div className="text-sm text-gray-600">
+            Step {currentStep + 1} of {steps.length}
+          </div>
+
+          <div className="flex gap-3">
+            {currentStep === 6 ? (
+              <>
+                <Button variant="outline">Save as Draft</Button>
+                <Button variant="outline">Send Test Email</Button>
+                <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]">🚀 Launch Campaign</Button>
+              </>
+            ) : (
+              <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]" onClick={handleNext}>
+                Next →
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Template Preview Modal */}
+      {showPreview && previewTemplate && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowPreview(false)}
+        >
+          <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-0">
+              <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{previewTemplate.name}</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {previewTemplate.emails} emails over {previewTemplate.days} days
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {previewTemplate.structure?.map((step: any, index: number) => (
+                  <div key={index} className="border-l-4 border-[#7C3AED] pl-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className="bg-purple-100 text-[#7C3AED]">
+                        Day {step.day} - {step.type.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Subject: {step.subject}</div>
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      Sample email content for {step.type}...
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-6 border-t flex gap-3">
+                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowPreview(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
+                  onClick={() => {
+                    handleTemplateSelect(previewTemplate)
+                    setShowPreview(false)
+                  }}
+                >
+                  Use This Template
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}
