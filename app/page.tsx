@@ -10,7 +10,7 @@ export default function Home() {
     const urlParams = new URLSearchParams(window.location.search)
     const urlToken = urlParams.get('token')
     if (urlToken) {
-      localStorage.setItem('authToken', urlToken)
+      localStorage.setItem('triggerio_token', urlToken)
       window.history.replaceState({}, '', window.location.pathname)
     }
     router.replace("/campaigns/create")
