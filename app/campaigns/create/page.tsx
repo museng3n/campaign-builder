@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,6 +24,15 @@ const steps = [
 ]
 
 export default function CreateCampaignPage() {
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlToken = urlParams.get('token')
+    if (urlToken) {
+      localStorage.setItem('triggerio_token', urlToken)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("popular")
