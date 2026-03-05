@@ -146,28 +146,28 @@ export default function CreateCampaignPage() {
                 onClick={() => setActiveTab("popular")}
                 className={activeTab === "popular" ? "bg-[#7C3AED]" : ""}
               >
-                🔥 Popular
+                Popular
               </Button>
               <Button
                 variant={activeTab === "goal" ? "default" : "outline"}
                 onClick={() => setActiveTab("goal")}
                 className={activeTab === "goal" ? "bg-[#7C3AED]" : ""}
               >
-                🎯 By Goal
+                By Goal
               </Button>
               <Button
                 variant={activeTab === "industry" ? "default" : "outline"}
                 onClick={() => setActiveTab("industry")}
                 className={activeTab === "industry" ? "bg-[#7C3AED]" : ""}
               >
-                🏭 By Industry
+                By Industry
               </Button>
               <Button
                 variant={activeTab === "blank" ? "default" : "outline"}
                 onClick={() => setActiveTab("blank")}
                 className={activeTab === "blank" ? "bg-[#7C3AED]" : ""}
               >
-                ⚡ Blank
+                Blank
               </Button>
             </div>
 
