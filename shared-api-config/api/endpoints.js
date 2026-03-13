@@ -96,3 +96,30 @@ export const analyticsAPI = {
     return response.data;
   },
 };
+
+// ===================================================================
+// Campaigns API
+// ===================================================================
+export const campaignsAPI = {
+  getAll: (params = {}) => apiClient.get('/api/campaigns', { params }),
+  getById: (id) => apiClient.get('/api/campaigns/' + id),
+  create: (data) => apiClient.post('/api/campaigns', data),
+  update: (id, data) => apiClient.patch('/api/campaigns/' + id, data),
+  updateFull: (id, data) => apiClient.put('/api/campaigns/' + id, data),
+  launch: (id) => apiClient.post('/api/campaigns/' + id + '/launch'),
+  pause: (id) => apiClient.post('/api/campaigns/' + id + '/pause'),
+  changeStatus: (id, status) => apiClient.patch('/api/campaigns/' + id + '/status', { status }),
+  delete: (id) => apiClient.delete('/api/campaigns/' + id),
+  getRecipients: (id, params = {}) => apiClient.get('/api/campaigns/' + id + '/recipients', { params }),
+};
+
+// ===================================================================
+// Email Accounts API
+// ===================================================================
+export const emailAccountsAPI = {
+  getAll: () => apiClient.get('/api/email-accounts'),
+  startGoogleAuth: () => apiClient.get('/api/email-accounts/google/auth'),
+  sendTest: (id) => apiClient.post('/api/email-accounts/' + id + '/test'),
+  delete: (id) => apiClient.delete('/api/email-accounts/' + id),
+  update: (id, data) => apiClient.patch('/api/email-accounts/' + id, data),
+};

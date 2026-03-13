@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Mail, Clock, CheckCircle2, X } from "lucide-react"
+import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { popularTemplates } from "@/lib/campaign-templates"
+import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
 
 const steps = [
   { name: "Template", nameAr: "قالب" },
@@ -38,6 +39,13 @@ export default function CreateCampaignPage() {
   const [activeTab, setActiveTab] = useState("popular")
   const [showPreview, setShowPreview] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<any>(null)
+
+  const [saving, setSaving] = useState(false)
+  const [launching, setLaunching] = useState(false)
+  const [savedCampaignId, setSavedCampaignId] = useState<string | null>(null)
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([])
+  const [selectedEmailAccount, setSelectedEmailAccount] = useState("")
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const [campaignData, setCampaignData] = useState({
     name: "",
@@ -74,6 +82,101 @@ export default function CreateCampaignPage() {
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template)
     handleNext()
+  }
+
+  // جلب حسابات البريد المتصلة
+  useEffect(() => {
+    const fetchEmailAccounts = async () => {
+      try {
+        const data = await emailAccountsAPI.getAll()
+        setEmailAccounts(data.accounts || [])
+        if (data.accounts?.length > 0) {
+          setSelectedEmailAccount(data.accounts[0]._id)
+        }
+      } catch (err) {
+        console.error("Failed to fetch email accounts:", err)
+      }
+    }
+    fetchEmailAccounts()
+  }, [])
+
+  // حفظ كمسودة
+  const handleSaveDraft = async () => {
+    setSaving(true)
+    setStatusMessage(null)
+    try {
+      const payload = {
+        name: campaignData.name || "Untitled Campaign",
+        type: "cold_email" as const,
+        goal: campaignData.goal,
+        industry: campaignData.industry,
+        description: campaignData.description,
+        tags: campaignData.tags,
+        templateId: selectedTemplate?.id,
+        templateName: selectedTemplate?.name,
+        audience: campaignData.audience,
+        sendSchedule: campaignData.sendSchedule,
+        emailAccountId: selectedEmailAccount || undefined,
+      }
+
+      if (savedCampaignId) {
+        await campaignsAPI.update(savedCampaignId, payload)
+        setStatusMessage({ type: "success", text: "Draft updated successfully!" })
+      } else {
+        const result = await campaignsAPI.create(payload)
+        setSavedCampaignId(result.data?._id || result.campaign?._id)
+        setStatusMessage({ type: "success", text: "Draft saved successfully!" })
+      }
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Failed to save draft" })
+    } finally {
+      setSaving(false)
+      setTimeout(() => setStatusMessage(null), 4000)
+    }
+  }
+
+  // إطلاق الحملة
+  const handleLaunchCampaign = async () => {
+    if (!selectedEmailAccount) {
+      setStatusMessage({ type: "error", text: "Please select an email account first" })
+      return
+    }
+    setLaunching(true)
+    setStatusMessage(null)
+    try {
+      // حفظ أولاً إذا لم تُحفظ
+      if (!savedCampaignId) {
+        await handleSaveDraft()
+      }
+      if (!savedCampaignId) {
+        throw new Error("Failed to save campaign before launching")
+      }
+      await campaignsAPI.launch(savedCampaignId)
+      setStatusMessage({ type: "success", text: "Campaign launched successfully!" })
+      // الانتقال لصفحة الحملات بعد ثانيتين
+      setTimeout(() => {
+        window.location.href = "/campaigns"
+      }, 2000)
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Failed to launch campaign" })
+    } finally {
+      setLaunching(false)
+    }
+  }
+
+  // إرسال بريد تجريبي
+  const handleSendTestEmail = async () => {
+    if (!selectedEmailAccount) {
+      setStatusMessage({ type: "error", text: "Please select an email account first" })
+      return
+    }
+    try {
+      await emailAccountsAPI.sendTest(selectedEmailAccount)
+      setStatusMessage({ type: "success", text: "Test email sent! Check your inbox." })
+      setTimeout(() => setStatusMessage(null), 4000)
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Failed to send test email" })
+    }
   }
 
   return (
@@ -643,6 +746,34 @@ Quick question: Are you handling {{pain_point}} manually or have you found a bet
         {/* Step 6: Settings */}
         {currentStep === 5 && (
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Email Account Selection */}
+            <Card>
+              <CardContent className="p-8 space-y-4">
+                <Label className="text-lg font-semibold mb-4 block">Email Account</Label>
+                <p className="text-sm text-gray-600 mb-2">اختر حساب البريد الذي سيُرسل منه الحملة</p>
+                {emailAccounts.length > 0 ? (
+                  <Select value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select email account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {emailAccounts.map((account: any) => (
+                        <SelectItem key={account._id} value={account._id}>
+                          {account.email} ({account.provider}) — {account.status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Card className="bg-yellow-50 border-yellow-200">
+                    <CardContent className="p-4 text-sm text-yellow-900">
+                      No email accounts connected. Please connect a Gmail account from Settings first.
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardContent className="p-8 space-y-8">
                 <div>
@@ -934,12 +1065,27 @@ Quick question: Are you handling {{pain_point}} manually or have you found a bet
             Step {currentStep + 1} of {steps.length}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {statusMessage && (
+              <span className={`text-sm font-medium ${statusMessage.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                {statusMessage.text}
+              </span>
+            )}
             {currentStep === 6 ? (
               <>
-                <Button variant="outline">Save as Draft</Button>
-                <Button variant="outline">Send Test Email</Button>
-                <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]">🚀 Launch Campaign</Button>
+                <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
+                  {saving ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> Saving...</> : "Save as Draft"}
+                </Button>
+                <Button variant="outline" onClick={handleSendTestEmail}>
+                  Send Test Email
+                </Button>
+                <Button
+                  className="bg-[#7C3AED] hover:bg-[#6D28D9]"
+                  onClick={handleLaunchCampaign}
+                  disabled={launching}
+                >
+                  {launching ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> Launching...</> : "Launch Campaign"}
+                </Button>
               </>
             ) : (
               <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]" onClick={handleNext}>
