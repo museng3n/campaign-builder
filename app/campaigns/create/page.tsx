@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { popularTemplates, byGoalTemplates, byIndustryTemplates } from "@/lib/campaign-templates"
@@ -49,6 +50,8 @@ export default function CreateCampaignPage() {
   const [emailAccounts, setEmailAccounts] = useState<any[]>([])
   const [selectedEmailAccount, setSelectedEmailAccount] = useState("")
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [showLaunchConfirm, setShowLaunchConfirm] = useState(false)
+  const [showLaunchSuccess, setShowLaunchSuccess] = useState(false)
   const [emailEdits, setEmailEdits] = useState<{ subject: string; body: string }[]>([])
   const [sequenceSteps, setSequenceSteps] = useState<Array<{
     type: "email" | "wait";
@@ -239,6 +242,36 @@ export default function CreateCampaignPage() {
     fetchEmailAccounts()
   }, [])
 
+  // Auto-save campaign data to sessionStorage
+  useEffect(() => {
+    const dataToSave = {
+      campaignData,
+      selectedTemplate: selectedTemplate ? { id: selectedTemplate.id, name: selectedTemplate.name } : null,
+      emailEdits,
+      sequenceSteps,
+      selectedEmailAccount,
+      currentStep,
+    }
+    sessionStorage.setItem('triggerio_campaign_draft', JSON.stringify(dataToSave))
+  }, [campaignData, selectedTemplate, emailEdits, sequenceSteps, selectedEmailAccount, currentStep])
+
+  // Restore from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('triggerio_campaign_draft')
+    if (saved) {
+      try {
+        const data = JSON.parse(saved)
+        if (data.campaignData) setCampaignData(data.campaignData)
+        if (data.emailEdits?.length) setEmailEdits(data.emailEdits)
+        if (data.sequenceSteps?.length) setSequenceSteps(data.sequenceSteps)
+        if (data.selectedEmailAccount) setSelectedEmailAccount(data.selectedEmailAccount)
+        if (data.currentStep) setCurrentStep(data.currentStep)
+      } catch (e) {
+        console.error('Failed to restore draft:', e)
+      }
+    }
+  }, [])
+
   // Build sequence steps from sequenceSteps + emailEdits for payload
   const buildSequenceSteps = () => {
     if (sequenceSteps.length === 0) {
@@ -324,6 +357,7 @@ export default function CreateCampaignPage() {
         await campaignsAPI.update(savedCampaignId, payload)
         setStatusMessage({ type: "success", text: "Draft updated successfully!" })
         toast({ title: "Campaign saved as draft" })
+        sessionStorage.removeItem('triggerio_campaign_draft')
         return savedCampaignId
       } else {
         const result = await campaignsAPI.create(payload)
@@ -331,6 +365,7 @@ export default function CreateCampaignPage() {
         setSavedCampaignId(newId)
         setStatusMessage({ type: "success", text: "Draft saved successfully!" })
         toast({ title: "Campaign saved as draft" })
+        sessionStorage.removeItem('triggerio_campaign_draft')
         return newId
       }
     } catch (err: any) {
@@ -362,10 +397,8 @@ export default function CreateCampaignPage() {
       await campaignsAPI.launch(campaignId)
       setStatusMessage({ type: "success", text: "Campaign launched successfully!" })
       toast({ title: "Campaign launched!" })
-      // الانتقال لصفحة الحملات بعد ثانيتين
-      setTimeout(() => {
-        window.location.href = "/campaigns"
-      }, 2000)
+      sessionStorage.removeItem('triggerio_campaign_draft')
+      setShowLaunchSuccess(true)
     } catch (err: any) {
       setStatusMessage({ type: "error", text: err.message || "Failed to launch campaign" })
     } finally {
@@ -414,11 +447,16 @@ export default function CreateCampaignPage() {
                   <div
                     className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
                       index < currentStep
-                        ? "bg-[#7C3AED] text-white"
+                        ? "bg-[#7C3AED] text-white cursor-pointer"
                         : index === currentStep
-                          ? "bg-[#7C3AED] text-white"
-                          : "bg-gray-200 text-gray-500"
+                          ? "bg-[#7C3AED] text-white cursor-pointer"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-50"
                     }`}
+                    onClick={() => {
+                      if (index <= currentStep) {
+                        setCurrentStep(index)
+                      }
+                    }}
                   >
                     {index < currentStep ? <CheckCircle2 className="w-5 h-5" /> : <span>{index + 1}</span>}
                   </div>
@@ -574,13 +612,15 @@ export default function CreateCampaignPage() {
                     onValueChange={(value) => setCampaignData({ ...campaignData, goal: value })}
                   >
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select a goal" />
+                      <SelectValue placeholder="Select campaign goal" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="meeting">Book Meeting</SelectItem>
-                      <SelectItem value="demo">Demo Request</SelectItem>
-                      <SelectItem value="leads">Generate Leads</SelectItem>
-                      <SelectItem value="relationship">Build Relationship</SelectItem>
+                      <SelectItem value="book_meeting">Book Meeting</SelectItem>
+                      <SelectItem value="demo_request">Demo Request</SelectItem>
+                      <SelectItem value="generate_leads">Generate Leads</SelectItem>
+                      <SelectItem value="build_relationship">Build Relationship</SelectItem>
+                      <SelectItem value="re_engage">Re-engage Cold Leads</SelectItem>
+                      <SelectItem value="get_feedback">Get Feedback</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -593,14 +633,18 @@ export default function CreateCampaignPage() {
                     onValueChange={(value) => setCampaignData({ ...campaignData, industry: value })}
                   >
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select an industry" />
+                      <SelectValue placeholder="Select industry" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="saas">SaaS/Tech</SelectItem>
+                      <SelectItem value="saas">SaaS / Technology</SelectItem>
                       <SelectItem value="ecommerce">E-commerce</SelectItem>
-                      <SelectItem value="realestate">Real Estate</SelectItem>
-                      <SelectItem value="agencies">Agencies</SelectItem>
-                      <SelectItem value="consulting">Consulting</SelectItem>
+                      <SelectItem value="agencies">Agencies / Marketing</SelectItem>
+                      <SelectItem value="consulting">Consulting / Services</SelectItem>
+                      <SelectItem value="real_estate">Real Estate</SelectItem>
+                      <SelectItem value="finance">Finance / Insurance</SelectItem>
+                      <SelectItem value="healthcare">Healthcare</SelectItem>
+                      <SelectItem value="education">Education</SelectItem>
+                      <SelectItem value="manufacturing">Manufacturing</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -610,11 +654,10 @@ export default function CreateCampaignPage() {
                   <Label htmlFor="description">Description (Optional)</Label>
                   <Textarea
                     id="description"
-                    placeholder="Brief description of campaign goals..."
+                    placeholder="Brief description of your campaign goals and target audience..."
                     value={campaignData.description}
                     onChange={(e) => setCampaignData({ ...campaignData, description: e.target.value })}
-                    className="mt-2"
-                    rows={4}
+                    className="mt-2 min-h-[80px]"
                   />
                 </div>
 
@@ -862,16 +905,27 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {sequenceSteps.map((step, stepIndex) => (
+                  {sequenceSteps.map((step, stepIndex) => {
+                    const getCumulativeDay = (targetIndex: number) => {
+                      let days = 0
+                      for (let i = 0; i < targetIndex; i++) {
+                        if (sequenceSteps[i].type === "wait") {
+                          days += sequenceSteps[i].waitDays || 0
+                        }
+                      }
+                      return days
+                    }
+                    return (
                     step.type === "wait" ? (
-                      <Card key={`wait-${stepIndex}`} className="my-2 bg-gray-50">
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-center gap-3">
-                            <span className="text-sm text-gray-600">⏱️ WAIT:</span>
+                      <div key={`wait-${stepIndex}`} className="flex items-center justify-center py-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-0.5 h-4 bg-gray-300"></div>
+                          <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
+                            <span className="text-sm text-gray-500">⏱️</span>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
                               onClick={() => {
                                 setSequenceSteps(prev => prev.map((s, i) =>
                                   i === stepIndex ? { ...s, waitDays: Math.max(1, (s.waitDays || 1) - 1) } : s
@@ -880,11 +934,13 @@ export default function CreateCampaignPage() {
                             >
                               -
                             </Button>
-                            <span className="text-sm font-medium text-gray-700">{step.waitDays} days</span>
+                            <span className="text-sm font-medium text-gray-600 min-w-[60px] text-center">
+                              {step.waitDays} {step.waitDays === 1 ? "day" : "days"}
+                            </span>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
                               onClick={() => {
                                 setSequenceSteps(prev => prev.map((s, i) =>
                                   i === stepIndex ? { ...s, waitDays: (s.waitDays || 1) + 1 } : s
@@ -894,15 +950,22 @@ export default function CreateCampaignPage() {
                               +
                             </Button>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <div className="w-0.5 h-4 bg-gray-300"></div>
+                        </div>
+                      </div>
                     ) : (
-                      <Card key={`email-${stepIndex}`} className="border-l-4 border-l-[#7C3AED]">
+                      <Card key={`email-${stepIndex}`} className={`border-l-4 ${
+                        step.emailIndex === 0
+                          ? "border-l-[#7C3AED]"
+                          : step.emailIndex === sequenceSteps.filter(s => s.type === "email").length - 1
+                            ? "border-l-[#EF4444]"
+                            : "border-l-[#3B82F6]"
+                      }`}>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-semibold text-gray-900">
-                                {step.label || `EMAIL ${(step.emailIndex ?? 0) + 1}`}
+                                EMAIL {(step.emailIndex ?? 0) + 1}: Day {getCumulativeDay(stepIndex)} - {step.label?.replace(/EMAIL \d+/, '').trim() || (step.emailIndex === 0 ? "INITIAL" : "FOLLOW UP")}
                               </h4>
                               <p className="text-sm text-gray-600 mt-1">
                                 {emailEdits[step.emailIndex ?? 0]?.subject || step.subject || "(no subject)"}
@@ -955,7 +1018,8 @@ export default function CreateCampaignPage() {
                         </CardContent>
                       </Card>
                     )
-                  ))}
+                    )
+                  })}
                 </div>
 
                 <div className="mt-6 flex gap-3">
@@ -1561,7 +1625,7 @@ export default function CreateCampaignPage() {
                 </Button>
                 <Button
                   className="bg-[#7C3AED] hover:bg-[#6D28D9]"
-                  onClick={handleLaunchCampaign}
+                  onClick={() => setShowLaunchConfirm(true)}
                   disabled={launching || !(
                     campaignData.name.trim().length > 0 &&
                     !!selectedEmailAccount &&
@@ -1582,6 +1646,75 @@ export default function CreateCampaignPage() {
           </div>
         </div>
       </div>
+
+      {/* Launch Confirmation Dialog */}
+      <Dialog open={showLaunchConfirm} onOpenChange={setShowLaunchConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Launch Campaign?</DialogTitle>
+            <DialogDescription>
+              This will start sending emails to your audience. Make sure all details are correct.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p><strong>Campaign:</strong> {campaignData.name || "Untitled"}</p>
+            <p><strong>Emails:</strong> {sequenceSteps.filter(s => s.type === "email").length} steps</p>
+            <p><strong>Daily limit:</strong> {campaignData.sendSchedule.dailyLimit} emails/day</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLaunchConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#7C3AED] hover:bg-[#6D28D9]"
+              onClick={() => {
+                setShowLaunchConfirm(false)
+                handleLaunchCampaign()
+              }}
+            >
+              Confirm Launch
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Launch Success Dialog */}
+      <Dialog open={showLaunchSuccess} onOpenChange={setShowLaunchSuccess}>
+        <DialogContent className="text-center">
+          <div className="py-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Campaign Launched!</h2>
+            <p className="text-gray-600 mb-4">
+              Your campaign &quot;{campaignData.name || 'Untitled'}&quot; is now live and sending.
+            </p>
+            <div className="space-y-1 text-sm text-gray-500 mb-6">
+              <p>Daily limit: {campaignData.sendSchedule.dailyLimit} emails/day</p>
+              <p>Sequence: {sequenceSteps.filter(s => s.type === "email").length} emails</p>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => {
+              setShowLaunchSuccess(false)
+              window.location.href = "/campaigns"
+            }}>
+              View Campaigns
+            </Button>
+            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]" onClick={() => {
+              setShowLaunchSuccess(false)
+              setCurrentStep(0)
+              setCampaignData(prev => ({ ...prev, name: "", description: "", tags: [] }))
+              setEmailEdits([])
+              setSequenceSteps([])
+              setSelectedTemplate(null)
+              setSavedCampaignId(null)
+            }}>
+              Create Another
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Template Preview Modal */}
       {showPreview && previewTemplate && (
