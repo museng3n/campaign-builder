@@ -47,6 +47,14 @@ export default function CreateCampaignPage() {
   const [selectedEmailAccount, setSelectedEmailAccount] = useState("")
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [emailEdits, setEmailEdits] = useState<{ subject: string; body: string }[]>([])
+  const [sequenceSteps, setSequenceSteps] = useState<Array<{
+    type: "email" | "wait";
+    emailIndex?: number;
+    subject?: string;
+    body?: string;
+    waitDays?: number;
+    label?: string;
+  }>>([])
 
   const [campaignData, setCampaignData] = useState({
     name: "",
@@ -110,8 +118,26 @@ export default function CreateCampaignPage() {
           body: email.body || "",
         }))
       )
+      // Build sequenceSteps from template structure
+      const newSteps: typeof sequenceSteps = []
+      template.structure.forEach((item: any, index: number) => {
+        if (index > 0) {
+          const prevDay = template.structure[index - 1].day
+          const waitDays = item.day - prevDay
+          newSteps.push({ type: "wait", waitDays })
+        }
+        newSteps.push({
+          type: "email",
+          emailIndex: index,
+          subject: item.subject,
+          body: item.body,
+          label: item.type?.toUpperCase() || `EMAIL ${index + 1}`,
+        })
+      })
+      setSequenceSteps(newSteps)
     } else {
       setEmailEdits([{ subject: "", body: "" }])
+      setSequenceSteps([{ type: "email", emailIndex: 0, subject: "", body: "", label: "EMAIL 1" }])
     }
     handleNext()
   }
@@ -132,22 +158,33 @@ export default function CreateCampaignPage() {
     fetchEmailAccounts()
   }, [])
 
-  // Build sequence steps from user-edited emails, falling back to template defaults
+  // Build sequence steps from sequenceSteps + emailEdits for payload
   const buildSequenceSteps = () => {
-    if (!selectedTemplate?.structure?.length) {
+    if (sequenceSteps.length === 0) {
       const edit = emailEdits[0] || { subject: "", body: "" }
       return [{ stepNumber: 1, delayDays: 0, subject: edit.subject, body: edit.body, type: "initial" }]
     }
-    return selectedTemplate.structure.map((email: any, index: number) => {
-      const edit = emailEdits[index] || { subject: "", body: "" }
-      return {
-        stepNumber: index + 1,
-        delayDays: index === 0 ? 0 : email.day,
-        subject: edit.subject || email.subject || "",
-        body: edit.body || email.body || "",
-        type: index === 0 ? "initial" : "follow_up",
-      }
-    })
+    let dayCounter = 0
+    return sequenceSteps
+      .filter(s => s.type === "email")
+      .map((step, index) => {
+        // Calculate day from wait steps before this email
+        dayCounter = 0
+        const emailStepIndex = sequenceSteps.indexOf(step)
+        for (let i = 0; i < emailStepIndex; i++) {
+          if (sequenceSteps[i].type === "wait") {
+            dayCounter += sequenceSteps[i].waitDays || 0
+          }
+        }
+        const edit = emailEdits[index]
+        return {
+          stepNumber: index + 1,
+          delayDays: dayCounter,
+          subject: edit?.subject || step.subject || "",
+          body: edit?.body || step.body || "",
+          type: index === 0 ? "initial" : "follow_up",
+        }
+      })
   }
 
   // حفظ كمسودة - returns campaign ID
@@ -762,45 +799,125 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {selectedTemplate?.structure?.map((email: any, index: number) => (
-                    <div key={index}>
-                      <Card className="border-l-4 border-l-[#7C3AED]">
+                  {sequenceSteps.map((step, stepIndex) => (
+                    step.type === "wait" ? (
+                      <Card key={`wait-${stepIndex}`} className="my-2 bg-gray-50">
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="text-sm text-gray-600">⏱️ WAIT:</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                setSequenceSteps(prev => prev.map((s, i) =>
+                                  i === stepIndex ? { ...s, waitDays: Math.max(1, (s.waitDays || 1) - 1) } : s
+                                ))
+                              }}
+                            >
+                              -
+                            </Button>
+                            <span className="text-sm font-medium text-gray-700">{step.waitDays} days</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                setSequenceSteps(prev => prev.map((s, i) =>
+                                  i === stepIndex ? { ...s, waitDays: (s.waitDays || 1) + 1 } : s
+                                ))
+                              }}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card key={`email-${stepIndex}`} className="border-l-4 border-l-[#7C3AED]">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-semibold text-gray-900">
-                                EMAIL {index + 1}: Day {email.day} - {email.type.replace("_", " ").toUpperCase()}
+                                {step.label || `EMAIL ${(step.emailIndex ?? 0) + 1}`}
                               </h4>
-                              <p className="text-sm text-gray-600 mt-1">{email.subject}</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {emailEdits[step.emailIndex ?? 0]?.subject || step.subject || "(no subject)"}
+                              </p>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setCurrentStep(4)}
+                              >
                                 ✏️ Edit
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const emailCount = sequenceSteps.filter(s => s.type === "email").length
+                                  if (emailCount <= 1) {
+                                    setStatusMessage({ type: "error", text: "يجب إبقاء إيميل واحد على الأقل" })
+                                    setTimeout(() => setStatusMessage(null), 3000)
+                                    return
+                                  }
+                                  const emailIdx = step.emailIndex
+                                  setSequenceSteps(prev => {
+                                    const newSteps = [...prev]
+                                    if (stepIndex > 0 && newSteps[stepIndex - 1].type === "wait") {
+                                      newSteps.splice(stepIndex - 1, 2)
+                                    } else {
+                                      newSteps.splice(stepIndex, 1)
+                                    }
+                                    let emailCounter = 0
+                                    return newSteps.map(s => {
+                                      if (s.type === "email") {
+                                        return { ...s, emailIndex: emailCounter++, label: `EMAIL ${emailCounter}` }
+                                      }
+                                      return s
+                                    })
+                                  })
+                                  if (emailIdx !== undefined) {
+                                    setEmailEdits(prev => prev.filter((_, i) => i !== emailIdx))
+                                  }
+                                }}
+                              >
                                 🗑️ Delete
                               </Button>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-
-                      {index < (selectedTemplate?.structure?.length || 0) - 1 && (
-                        <Card className="my-2 bg-gray-50">
-                          <CardContent className="p-3 text-center">
-                            <p className="text-sm text-gray-600">⏱️ WAIT: {email.day} days</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
+                    )
                   ))}
                 </div>
 
                 <div className="mt-6 flex gap-3">
-                  <Button variant="outline" className="flex-1 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent"
+                    onClick={() => {
+                      const emailCount = sequenceSteps.filter(s => s.type === "email").length
+                      const newEmailIndex = emailCount
+                      setEmailEdits(prev => [...prev, { subject: "", body: "" }])
+                      setSequenceSteps(prev => [
+                        ...prev,
+                        { type: "wait", waitDays: 3 },
+                        { type: "email", emailIndex: newEmailIndex, subject: "", body: "", label: `EMAIL ${newEmailIndex + 1}` }
+                      ])
+                    }}
+                  >
                     + Add Email Step
                   </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent"
+                    onClick={() => {
+                      setSequenceSteps(prev => [...prev, { type: "wait", waitDays: 1 }])
+                    }}
+                  >
                     + Add Wait Time
                   </Button>
                 </div>
