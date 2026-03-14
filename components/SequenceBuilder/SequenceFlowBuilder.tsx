@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
+import { CheckCircle, XCircle } from "lucide-react"
 import EmailNode from "./EmailNode"
 import WaitNode from "./WaitNode"
 import ConditionNode from "./ConditionNode"
@@ -213,7 +214,7 @@ export default function SequenceFlowBuilder({ steps, startStepId, onChange }: Se
             {/* YES branch */}
             <div className="flex flex-col items-center pt-2">
               <div className="w-px h-6 bg-green-400" />
-              <span className="text-green-600 text-xs font-bold mb-1">YES</span>
+              <span className="text-green-600 text-xs font-bold mb-1 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> YES</span>
               {step.yesNextStepId && renderStep(step.yesNextStepId, depth + 1)}
               <div className="w-px h-4 bg-green-300" />
               <AddNodeButton onAdd={(type) => createStep(type, step.stepId, "yes")} />
@@ -221,7 +222,7 @@ export default function SequenceFlowBuilder({ steps, startStepId, onChange }: Se
             {/* NO branch */}
             <div className="flex flex-col items-center pt-2">
               <div className="w-px h-6 bg-red-400" />
-              <span className="text-red-600 text-xs font-bold mb-1">NO</span>
+              <span className="text-red-600 text-xs font-bold mb-1 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> NO</span>
               {step.noNextStepId && renderStep(step.noNextStepId, depth + 1)}
               <div className="w-px h-4 bg-red-300" />
               <AddNodeButton onAdd={(type) => createStep(type, step.stepId, "no")} />

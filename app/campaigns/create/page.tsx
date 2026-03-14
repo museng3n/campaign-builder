@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2, List, GitBranch, Pencil, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { popularTemplates, byGoalTemplates, byIndustryTemplates } from "@/lib/campaign-templates"
 import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
@@ -934,7 +934,7 @@ export default function CreateCampaignPage() {
                     }`}
                     onClick={() => setSequenceType("linear")}
                   >
-                    <span className="mr-1">&#x1F4CB;</span> Linear Sequence
+                    <List className="w-4 h-4 inline mr-1" /> Linear Sequence
                   </button>
                   <button
                     className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
@@ -944,7 +944,7 @@ export default function CreateCampaignPage() {
                     }`}
                     onClick={() => setSequenceType("graph")}
                   >
-                    <span className="mr-1">&#x1F333;</span> Smart Sequence (with Conditions)
+                    <GitBranch className="w-4 h-4 inline mr-1" /> Smart Sequence (with Conditions)
                   </button>
                 </div>
 
@@ -974,7 +974,7 @@ export default function CreateCampaignPage() {
                         <div className="flex flex-col items-center">
                           <div className="w-0.5 h-4 bg-gray-300"></div>
                           <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
-                            <span className="text-sm text-gray-500">⏱️</span>
+                            <Clock className="w-4 h-4 text-gray-500" />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1030,7 +1030,7 @@ export default function CreateCampaignPage() {
                                 size="sm"
                                 onClick={() => setCurrentStep(4)}
                               >
-                                ✏️ Edit
+                                <Pencil className="w-3.5 h-3.5 inline mr-1" /> Edit
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1064,7 +1064,7 @@ export default function CreateCampaignPage() {
                                   }
                                 }}
                               >
-                                🗑️ Delete
+                                <Trash2 className="w-3.5 h-3.5 inline mr-1" /> Delete
                               </Button>
                             </div>
                           </div>
