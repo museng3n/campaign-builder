@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { popularTemplates } from "@/lib/campaign-templates"
+import { popularTemplates, byGoalTemplates, byIndustryTemplates } from "@/lib/campaign-templates"
 import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
 
 const steps = [
@@ -141,6 +141,83 @@ export default function CreateCampaignPage() {
     }
     handleNext()
   }
+
+  const renderTemplateCard = (template: any) => (
+    <Card
+      key={template.id}
+      className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#7C3AED]"
+    >
+      <CardContent className="p-6">
+        {/* Badge */}
+        <div className="flex items-center justify-between mb-4">
+          <Badge className="bg-purple-100 text-[#7C3AED] hover:bg-purple-100">{template.badge}</Badge>
+          <span className="text-xs text-gray-500">by {template.author}</span>
+        </div>
+
+        {/* Template Name */}
+        <h3 className="text-lg font-bold text-gray-900 mb-2">{template.name}</h3>
+        <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+
+        {/* Sequence Info */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Mail className="w-4 h-4" />
+            <span>{template.emails} emails</span>
+          </div>
+          <div className="flex items-center gap-1 text-sm text-gray-600">
+            <Clock className="w-4 h-4" />
+            <span>{template.days} days</span>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Open Rate</div>
+            <div className="text-lg font-bold text-[#10B981]">{template.stats.avgOpenRate}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Reply Rate</div>
+            <div className="text-lg font-bold text-[#7C3AED]">{template.stats.avgReplyRate}%</div>
+          </div>
+        </div>
+
+        {/* Usage */}
+        <div className="text-xs text-gray-500 mb-4">
+          Used {template.stats.usedCount.toLocaleString()} times
+        </div>
+
+        {/* Best For Tags */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {template.bestFor.map((tag: string) => (
+            <Badge key={tag} variant="secondary" className="bg-blue-50 text-blue-600">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 border-[#7C3AED] text-[#7C3AED] bg-transparent"
+            onClick={() => {
+              setPreviewTemplate(template)
+              setShowPreview(true)
+            }}
+          >
+            Preview
+          </Button>
+          <Button
+            className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
+            onClick={() => handleTemplateSelect(template)}
+          >
+            Use Template
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   // جلب حسابات البريد المتصلة
   useEffect(() => {
@@ -401,81 +478,40 @@ export default function CreateCampaignPage() {
             {/* Template Grid */}
             {activeTab === "popular" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {popularTemplates.filter(t => t.id !== 13).map((template) => (
-                  <Card
-                    key={template.id}
-                    className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#7C3AED]"
-                  >
-                    <CardContent className="p-6">
-                      {/* Badge */}
-                      <div className="flex items-center justify-between mb-4">
-                        <Badge className="bg-purple-100 text-[#7C3AED] hover:bg-purple-100">{template.badge}</Badge>
-                        <span className="text-xs text-gray-500">by {template.author}</span>
-                      </div>
+                {popularTemplates.filter(t => t.id !== 13).map((template) => renderTemplateCard(template))}
+              </div>
+            )}
 
-                      {/* Template Name */}
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">{template.name}</h3>
-                      <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+            {activeTab === "goal" && (
+              <div className="space-y-8">
+                {byGoalTemplates.map((group) => (
+                  <div key={group.goal}>
+                    <h3 className="text-lg font-semibold mb-4">{group.goal}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {group.templates.map((id) => {
+                        const template = popularTemplates.find(t => t.id === id)
+                        if (!template) return null
+                        return renderTemplateCard(template)
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                      {/* Sequence Info */}
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Mail className="w-4 h-4" />
-                          <span>{template.emails} emails</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>{template.days} days</span>
-                        </div>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Open Rate</div>
-                          <div className="text-lg font-bold text-[#10B981]">{template.stats.avgOpenRate}%</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Reply Rate</div>
-                          <div className="text-lg font-bold text-[#7C3AED]">{template.stats.avgReplyRate}%</div>
-                        </div>
-                      </div>
-
-                      {/* Usage */}
-                      <div className="text-xs text-gray-500 mb-4">
-                        Used {template.stats.usedCount.toLocaleString()} times
-                      </div>
-
-                      {/* Best For Tags */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {template.bestFor.map((tag: string) => (
-                          <Badge key={tag} variant="secondary" className="bg-blue-50 text-blue-600">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1 border-[#7C3AED] text-[#7C3AED] bg-transparent"
-                          onClick={() => {
-                            setPreviewTemplate(template)
-                            setShowPreview(true)
-                          }}
-                        >
-                          Preview
-                        </Button>
-                        <Button
-                          className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
-                          onClick={() => handleTemplateSelect(template)}
-                        >
-                          Use Template
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+            {activeTab === "industry" && (
+              <div className="space-y-8">
+                {byIndustryTemplates.map((group) => (
+                  <div key={group.industry}>
+                    <h3 className="text-lg font-semibold mb-4">{group.industry}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {group.templates.map((id) => {
+                        const template = popularTemplates.find(t => t.id === id)
+                        if (!template) return null
+                        return renderTemplateCard(template)
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
