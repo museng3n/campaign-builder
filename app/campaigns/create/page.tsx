@@ -55,16 +55,37 @@ export default function CreateCampaignPage() {
     description: "",
     tags: [] as string[],
     audience: {
-      temperature: ["warm"],
-      sources: ["csv", "apollo"],
-      filters: { industry: "", location: "", tags: "", groups: "" },
-      exclusions: { unsubscribed: true, bounced: true, activeCampaigns: false },
+      temperature: ["warm"] as string[],
+      sources: ["csv"] as string[],
+      filters: {
+        industry: "",
+        location: "",
+        tags: "",
+        groups: "",
+      },
+      excludeBounced: true,
+      excludeUnsubscribed: true,
+      excludeReplied: false,
     },
     sendSchedule: {
-      timing: "best",
-      days: ["mon", "tue", "wed", "thu", "fri"],
+      sendTime: "best",
+      specificTime: "",
+      days: ["mon", "tue", "wed", "thu", "fri"] as string[],
       dailyLimit: 50,
       warmup: true,
+      warmupStart: 20,
+      warmupIncrement: 10,
+    },
+    tracking: {
+      opens: true,
+      clicks: true,
+      replies: true,
+      unsubscribeLink: false,
+    },
+    sequence: {
+      stopOnReply: true,
+      stopOnUnsubscribe: true,
+      continueOnBounce: false,
     },
   })
 
@@ -145,14 +166,23 @@ export default function CreateCampaignPage() {
           temperature: campaignData.audience.temperature,
           sources: campaignData.audience.sources,
           filters: campaignData.audience.filters,
+          excludeBounced: campaignData.audience.excludeBounced,
+          excludeUnsubscribed: campaignData.audience.excludeUnsubscribed,
         },
         settings: {
           dailyLimit: campaignData.sendSchedule.dailyLimit,
-          sendWindow: { start: "09:00", end: "17:00" },
+          sendWindow: campaignData.sendSchedule.sendTime === "specific"
+            ? { start: campaignData.sendSchedule.specificTime, end: campaignData.sendSchedule.specificTime }
+            : { start: "09:00", end: "17:00" },
           timezone: "Asia/Baghdad",
-          stopOnReply: true,
-          trackOpens: true,
-          trackClicks: true,
+          sendTime: campaignData.sendSchedule.sendTime,
+          days: campaignData.sendSchedule.days,
+          warmup: campaignData.sendSchedule.warmup,
+          stopOnReply: campaignData.sequence.stopOnReply,
+          stopOnUnsubscribe: campaignData.sequence.stopOnUnsubscribe,
+          trackOpens: campaignData.tracking.opens,
+          trackClicks: campaignData.tracking.clicks,
+          trackReplies: campaignData.tracking.replies,
         },
       }
 
@@ -509,7 +539,16 @@ export default function CreateCampaignPage() {
 
                 <div>
                   <Label htmlFor="tags">Tags</Label>
-                  <Input id="tags" placeholder="e.g., Q4, Tech, High-Value" className="mt-2" />
+                  <Input
+                    id="tags"
+                    placeholder="e.g., Q4, Tech, High-Value"
+                    className="mt-2"
+                    value={campaignData.tags.join(", ")}
+                    onChange={(e) => setCampaignData(prev => ({
+                      ...prev,
+                      tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean)
+                    }))}
+                  />
                   <p className="text-xs text-gray-500 mt-1">Press Enter to add tags</p>
                 </div>
               </CardContent>
@@ -532,7 +571,21 @@ export default function CreateCampaignPage() {
                       { value: "frozen", label: "Frozen (No activity 30+ days)" },
                     ].map((temp) => (
                       <div key={temp.value} className="flex items-center gap-2">
-                        <Checkbox id={temp.value} />
+                        <Checkbox
+                          id={temp.value}
+                          checked={campaignData.audience.temperature.includes(temp.value)}
+                          onCheckedChange={(checked) => {
+                            setCampaignData(prev => ({
+                              ...prev,
+                              audience: {
+                                ...prev.audience,
+                                temperature: checked
+                                  ? [...prev.audience.temperature, temp.value]
+                                  : prev.audience.temperature.filter(t => t !== temp.value)
+                              }
+                            }))
+                          }}
+                        />
                         <Label htmlFor={temp.value} className="font-normal">
                           {temp.label}
                         </Label>
@@ -545,18 +598,32 @@ export default function CreateCampaignPage() {
                   <Label className="text-lg font-semibold mb-4 block">2. Source Filters</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      "CSV Import",
-                      "Apollo.io",
-                      "Hunter.io",
-                      "LinkedIn",
-                      "Instagram (engaged)",
-                      "Facebook",
-                      "Manual Entry",
+                      { value: "csv", label: "CSV Import" },
+                      { value: "apollo", label: "Apollo.io" },
+                      { value: "hunter", label: "Hunter.io" },
+                      { value: "linkedin", label: "LinkedIn" },
+                      { value: "instagram", label: "Instagram (engaged)" },
+                      { value: "facebook", label: "Facebook" },
+                      { value: "manual", label: "Manual Entry" },
                     ].map((source) => (
-                      <div key={source} className="flex items-center gap-2">
-                        <Checkbox id={source} />
-                        <Label htmlFor={source} className="font-normal">
-                          {source}
+                      <div key={source.value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={source.value}
+                          checked={campaignData.audience.sources.includes(source.value)}
+                          onCheckedChange={(checked) => {
+                            setCampaignData(prev => ({
+                              ...prev,
+                              audience: {
+                                ...prev.audience,
+                                sources: checked
+                                  ? [...prev.audience.sources, source.value]
+                                  : prev.audience.sources.filter(s => s !== source.value)
+                              }
+                            }))
+                          }}
+                        />
+                        <Label htmlFor={source.value} className="font-normal">
+                          {source.label}
                         </Label>
                       </div>
                     ))}
@@ -568,19 +635,55 @@ export default function CreateCampaignPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="filter-industry">Industry</Label>
-                      <Input id="filter-industry" placeholder="Technology" className="mt-2" />
+                      <Input
+                        id="filter-industry"
+                        placeholder="Technology"
+                        className="mt-2"
+                        value={campaignData.audience.filters.industry}
+                        onChange={(e) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, filters: { ...prev.audience.filters, industry: e.target.value } }
+                        }))}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="filter-location">Location</Label>
-                      <Input id="filter-location" placeholder="Dubai, UAE" className="mt-2" />
+                      <Input
+                        id="filter-location"
+                        placeholder="Dubai, UAE"
+                        className="mt-2"
+                        value={campaignData.audience.filters.location}
+                        onChange={(e) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, filters: { ...prev.audience.filters, location: e.target.value } }
+                        }))}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="filter-tags">Tags</Label>
-                      <Input id="filter-tags" placeholder="VIP, Interested" className="mt-2" />
+                      <Input
+                        id="filter-tags"
+                        placeholder="VIP, Interested"
+                        className="mt-2"
+                        value={campaignData.audience.filters.tags}
+                        onChange={(e) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, filters: { ...prev.audience.filters, tags: e.target.value } }
+                        }))}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="filter-groups">Groups</Label>
-                      <Input id="filter-groups" placeholder="Q4 Leads" className="mt-2" />
+                      <Input
+                        id="filter-groups"
+                        placeholder="Q4 Leads"
+                        className="mt-2"
+                        value={campaignData.audience.filters.groups}
+                        onChange={(e) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, filters: { ...prev.audience.filters, groups: e.target.value } }
+                        }))}
+                      />
                     </div>
                   </div>
                 </div>
@@ -589,21 +692,42 @@ export default function CreateCampaignPage() {
                   <Label className="text-lg font-semibold mb-4 block">4. Exclusions</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Checkbox id="exclude-unsubscribed" defaultChecked />
+                      <Checkbox
+                        id="exclude-unsubscribed"
+                        checked={campaignData.audience.excludeUnsubscribed}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, excludeUnsubscribed: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="exclude-unsubscribed" className="font-normal">
                         Exclude unsubscribed
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="exclude-bounced" defaultChecked />
+                      <Checkbox
+                        id="exclude-bounced"
+                        checked={campaignData.audience.excludeBounced}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, excludeBounced: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="exclude-bounced" className="font-normal">
                         Exclude bounced emails
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="exclude-active" />
-                      <Label htmlFor="exclude-active" className="font-normal">
-                        Exclude contacts in other campaigns
+                      <Checkbox
+                        id="exclude-replied"
+                        checked={campaignData.audience.excludeReplied}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          audience: { ...prev.audience, excludeReplied: !!checked }
+                        }))}
+                      />
+                      <Label htmlFor="exclude-replied" className="font-normal">
+                        Exclude contacts who already replied
                       </Label>
                     </div>
                   </div>
@@ -684,19 +808,40 @@ export default function CreateCampaignPage() {
                 <div className="mt-8 space-y-3">
                   <Label className="font-semibold">Settings:</Label>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="stop-reply" defaultChecked />
+                    <Checkbox
+                      id="stop-reply"
+                      checked={campaignData.sequence.stopOnReply}
+                      onCheckedChange={(checked) => setCampaignData(prev => ({
+                        ...prev,
+                        sequence: { ...prev.sequence, stopOnReply: !!checked }
+                      }))}
+                    />
                     <Label htmlFor="stop-reply" className="font-normal">
                       Stop sequence on reply
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="stop-unsubscribe" defaultChecked />
+                    <Checkbox
+                      id="stop-unsubscribe"
+                      checked={campaignData.sequence.stopOnUnsubscribe}
+                      onCheckedChange={(checked) => setCampaignData(prev => ({
+                        ...prev,
+                        sequence: { ...prev.sequence, stopOnUnsubscribe: !!checked }
+                      }))}
+                    />
                     <Label htmlFor="stop-unsubscribe" className="font-normal">
                       Stop sequence on unsubscribe
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="continue-bounce" />
+                    <Checkbox
+                      id="continue-bounce"
+                      checked={campaignData.sequence.continueOnBounce}
+                      onCheckedChange={(checked) => setCampaignData(prev => ({
+                        ...prev,
+                        sequence: { ...prev.sequence, continueOnBounce: !!checked }
+                      }))}
+                    />
                     <Label htmlFor="continue-bounce" className="font-normal">
                       Continue if email bounces (not recommended)
                     </Label>
@@ -819,19 +964,46 @@ export default function CreateCampaignPage() {
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <input type="radio" id="best-time" name="timing" defaultChecked />
+                        <input
+                          type="radio"
+                          id="best-time"
+                          name="timing"
+                          checked={campaignData.sendSchedule.sendTime === "best"}
+                          onChange={() => setCampaignData(prev => ({
+                            ...prev,
+                            sendSchedule: { ...prev.sendSchedule, sendTime: "best" }
+                          }))}
+                        />
                         <Label htmlFor="best-time" className="font-normal">
                           Best time (AI optimized)
                         </Label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <input type="radio" id="specific-time" name="timing" />
+                        <input
+                          type="radio"
+                          id="specific-time"
+                          name="timing"
+                          checked={campaignData.sendSchedule.sendTime === "specific"}
+                          onChange={() => setCampaignData(prev => ({
+                            ...prev,
+                            sendSchedule: { ...prev.sendSchedule, sendTime: "specific" }
+                          }))}
+                        />
                         <Label htmlFor="specific-time" className="font-normal">
                           Specific time
                         </Label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <input type="radio" id="random-time" name="timing" />
+                        <input
+                          type="radio"
+                          id="random-time"
+                          name="timing"
+                          checked={campaignData.sendSchedule.sendTime === "random"}
+                          onChange={() => setCampaignData(prev => ({
+                            ...prev,
+                            sendSchedule: { ...prev.sendSchedule, sendTime: "random" }
+                          }))}
+                        />
                         <Label htmlFor="random-time" className="font-normal">
                           Random time (between 09:00 - 17:00)
                         </Label>
@@ -841,16 +1013,26 @@ export default function CreateCampaignPage() {
                     <div>
                       <Label className="block mb-2">Days:</Label>
                       <div className="flex gap-2">
-                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                          <Button
-                            key={day}
-                            variant={["Mon", "Tue", "Wed", "Thu", "Fri"].includes(day) ? "default" : "outline"}
-                            size="sm"
-                            className={["Mon", "Tue", "Wed", "Thu", "Fri"].includes(day) ? "bg-[#7C3AED]" : ""}
-                          >
-                            {day}
-                          </Button>
-                        ))}
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+                          const dayKey = day.toLowerCase()
+                          const isActive = campaignData.sendSchedule.days.includes(dayKey)
+                          return (
+                            <Button
+                              key={day}
+                              variant={isActive ? "default" : "outline"}
+                              size="sm"
+                              className={isActive ? "bg-[#7C3AED]" : ""}
+                              onClick={() => setCampaignData(prev => {
+                                const days = prev.sendSchedule.days.includes(dayKey)
+                                  ? prev.sendSchedule.days.filter(d => d !== dayKey)
+                                  : [...prev.sendSchedule.days, dayKey]
+                                return { ...prev, sendSchedule: { ...prev.sendSchedule, days } }
+                              })}
+                            >
+                              {day}
+                            </Button>
+                          )
+                        })}
                       </div>
                     </div>
 
@@ -867,7 +1049,13 @@ export default function CreateCampaignPage() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="daily-limit">Daily send limit:</Label>
-                      <Select defaultValue="50">
+                      <Select
+                        value={String(campaignData.sendSchedule.dailyLimit)}
+                        onValueChange={(val) => setCampaignData(prev => ({
+                          ...prev,
+                          sendSchedule: { ...prev.sendSchedule, dailyLimit: parseInt(val) }
+                        }))}
+                      >
                         <SelectTrigger className="mt-2">
                           <SelectValue />
                         </SelectTrigger>
@@ -888,7 +1076,14 @@ export default function CreateCampaignPage() {
                     </Card>
 
                     <div className="flex items-center gap-2">
-                      <Checkbox id="warmup" defaultChecked />
+                      <Checkbox
+                        id="warmup"
+                        checked={campaignData.sendSchedule.warmup}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          sendSchedule: { ...prev.sendSchedule, warmup: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="warmup" className="font-normal">
                         Gradual warmup (Start 20/day, +10 every 3 days)
                       </Label>
@@ -900,25 +1095,53 @@ export default function CreateCampaignPage() {
                   <Label className="text-lg font-semibold mb-4 block">3. Tracking</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Checkbox id="track-opens" defaultChecked />
+                      <Checkbox
+                        id="track-opens"
+                        checked={campaignData.tracking.opens}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          tracking: { ...prev.tracking, opens: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="track-opens" className="font-normal">
                         Track email opens
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="track-clicks" defaultChecked />
+                      <Checkbox
+                        id="track-clicks"
+                        checked={campaignData.tracking.clicks}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          tracking: { ...prev.tracking, clicks: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="track-clicks" className="font-normal">
                         Track link clicks
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="track-replies" defaultChecked />
+                      <Checkbox
+                        id="track-replies"
+                        checked={campaignData.tracking.replies}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          tracking: { ...prev.tracking, replies: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="track-replies" className="font-normal">
                         Track replies
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="unsubscribe-link" />
+                      <Checkbox
+                        id="unsubscribe-link"
+                        checked={campaignData.tracking.unsubscribeLink}
+                        onCheckedChange={(checked) => setCampaignData(prev => ({
+                          ...prev,
+                          tracking: { ...prev.tracking, unsubscribeLink: !!checked }
+                        }))}
+                      />
                       <Label htmlFor="unsubscribe-link" className="font-normal">
                         Add unsubscribe link (required by law)
                       </Label>
