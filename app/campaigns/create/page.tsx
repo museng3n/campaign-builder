@@ -334,7 +334,7 @@ export default function CreateCampaignPage() {
             {/* Template Grid */}
             {activeTab === "popular" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {popularTemplates.map((template) => (
+                {popularTemplates.filter(t => t.id !== 13).map((template) => (
                   <Card
                     key={template.id}
                     className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#7C3AED]"
@@ -424,10 +424,13 @@ export default function CreateCampaignPage() {
                     </div>
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Start from Scratch</h3>
-                  <p className="text-gray-600 mb-6">Build your own custom sequence with full control</p>
+                  <p className="text-gray-600 mb-6">Build your own campaign from scratch. Full control over every email.</p>
                   <Button
                     className="bg-[#7C3AED] hover:bg-[#6D28D9]"
-                    onClick={() => handleTemplateSelect({ id: "blank", name: "Blank Template" })}
+                    onClick={() => {
+                      const blankTemplate = popularTemplates.find(t => t.id === 13)
+                      if (blankTemplate) handleTemplateSelect(blankTemplate)
+                    }}
                   >
                     Create Blank Campaign
                   </Button>
@@ -1160,8 +1163,8 @@ export default function CreateCampaignPage() {
                       </Badge>
                     </div>
                     <div className="text-sm font-semibold text-gray-700 mb-1">Subject: {step.subject}</div>
-                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                      Sample email content for {step.type}...
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded whitespace-pre-line">
+                      {step.body || `Sample email content for ${step.type}...`}
                     </div>
                   </div>
                 ))}
