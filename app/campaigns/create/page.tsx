@@ -15,6 +15,8 @@ import Link from "next/link"
 import { popularTemplates, byGoalTemplates, byIndustryTemplates } from "@/lib/campaign-templates"
 import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import SequenceFlowBuilder from "@/components/SequenceBuilder/SequenceFlowBuilder"
+import type { SequenceGraph } from "@/components/SequenceBuilder/SequenceFlowBuilder"
 
 const steps = [
   { name: "Template", nameAr: "قالب" },
@@ -61,6 +63,10 @@ export default function CreateCampaignPage() {
     waitDays?: number;
     label?: string;
   }>>([])
+
+  // GHL-68 Phase 3: Smart Sequence (graph-based)
+  const [sequenceType, setSequenceType] = useState<"linear" | "graph">("linear")
+  const [sequenceGraph, setSequenceGraph] = useState<SequenceGraph>({ steps: [], startStepId: null, version: 1 })
 
   const [campaignData, setCampaignData] = useState({
     name: "",
@@ -306,10 +312,12 @@ export default function CreateCampaignPage() {
     setSaving(true)
     setStatusMessage(null)
     try {
-      const payload = {
+      const payload: any = {
         name: campaignData.name || "Untitled Campaign",
         status: "draft",
         emailAccountId: selectedEmailAccount || undefined,
+        sequenceType,
+        ...(sequenceType === "graph" ? { sequenceGraph } : {}),
         sequence: {
           steps: buildSequenceSteps(),
         },
@@ -337,18 +345,30 @@ export default function CreateCampaignPage() {
         },
       }
 
-      // Validate that all email steps have non-empty subject and body
-      const emptySteps = payload.sequence.steps.filter(
-        (s: any) => !s.subject.trim() || !s.body.trim()
-      )
-      if (emptySteps.length > 0) {
-        setStatusMessage({
-          type: "error",
-          text: `Email step(s) ${emptySteps.map((s: any) => s.stepNumber).join(", ")} missing subject or body. Please fill in all emails.`,
-        })
-        toast({ title: "Please fill in all required fields", variant: "destructive" })
-        setSaving(false)
-        return null
+      // Validate email steps
+      if (sequenceType === "graph") {
+        // Graph mode: validate graph email steps
+        const graphEmails = sequenceGraph.steps.filter((s) => s.type === "email")
+        const emptyGraphEmails = graphEmails.filter((s) => !s.subject?.trim() || !s.body?.trim())
+        if (graphEmails.length > 0 && emptyGraphEmails.length > 0) {
+          setStatusMessage({ type: "error", text: "Some email steps in the smart sequence are missing subject or body." })
+          toast({ title: "Please fill in all email steps", variant: "destructive" })
+          setSaving(false)
+          return null
+        }
+      } else {
+        const emptySteps = payload.sequence.steps.filter(
+          (s: any) => !s.subject.trim() || !s.body.trim()
+        )
+        if (emptySteps.length > 0) {
+          setStatusMessage({
+            type: "error",
+            text: `Email step(s) ${emptySteps.map((s: any) => s.stepNumber).join(", ")} missing subject or body. Please fill in all emails.`,
+          })
+          toast({ title: "Please fill in all required fields", variant: "destructive" })
+          setSaving(false)
+          return null
+        }
       }
 
       console.log('Campaign payload:', JSON.stringify(payload, null, 2))
@@ -904,6 +924,39 @@ export default function CreateCampaignPage() {
                   <p className="text-gray-600">Pre-filled from template (editable)</p>
                 </div>
 
+                {/* Toggle: Linear vs Smart Sequence */}
+                <div className="flex gap-2 mb-6">
+                  <button
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      sequenceType === "linear"
+                        ? "bg-purple-100 border-purple-400 text-purple-700"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                    onClick={() => setSequenceType("linear")}
+                  >
+                    <span className="mr-1">&#x1F4CB;</span> Linear Sequence
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      sequenceType === "graph"
+                        ? "bg-purple-100 border-purple-400 text-purple-700"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                    onClick={() => setSequenceType("graph")}
+                  >
+                    <span className="mr-1">&#x1F333;</span> Smart Sequence (with Conditions)
+                  </button>
+                </div>
+
+                {/* Smart Sequence (graph-based) */}
+                {sequenceType === "graph" ? (
+                  <SequenceFlowBuilder
+                    steps={sequenceGraph.steps}
+                    startStepId={sequenceGraph.startStepId}
+                    onChange={(newGraph) => setSequenceGraph(newGraph)}
+                  />
+                ) : (
+                <>
                 <div className="space-y-4">
                   {sequenceSteps.map((step, stepIndex) => {
                     const getCumulativeDay = (targetIndex: number) => {
@@ -1050,6 +1103,9 @@ export default function CreateCampaignPage() {
                     + Add Wait Time
                   </Button>
                 </div>
+
+                </>
+                )}
 
                 <div className="mt-8 space-y-3">
                   <Label className="font-semibold">Settings:</Label>
