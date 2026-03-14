@@ -100,35 +100,61 @@ export default function CreateCampaignPage() {
     fetchEmailAccounts()
   }, [])
 
-  // حفظ كمسودة
-  const handleSaveDraft = async () => {
+  // Build sequence steps from template structure
+  const buildSequenceSteps = () => {
+    if (!selectedTemplate?.structure?.length) {
+      return [{ stepNumber: 1, delayDays: 0, subject: "", body: "", type: "initial" }]
+    }
+    return selectedTemplate.structure.map((email: any, index: number) => ({
+      stepNumber: index + 1,
+      delayDays: index === 0 ? 0 : email.day,
+      subject: email.subject || "",
+      body: email.body || "",
+      type: index === 0 ? "initial" : "follow_up",
+    }))
+  }
+
+  // حفظ كمسودة - returns campaign ID
+  const handleSaveDraft = async (): Promise<string | null> => {
     setSaving(true)
     setStatusMessage(null)
     try {
       const payload = {
         name: campaignData.name || "Untitled Campaign",
-        type: "cold_email" as const,
-        goal: campaignData.goal,
-        industry: campaignData.industry,
-        description: campaignData.description,
-        tags: campaignData.tags,
-        templateId: selectedTemplate?.id,
-        templateName: selectedTemplate?.name,
-        audience: campaignData.audience,
-        sendSchedule: campaignData.sendSchedule,
+        status: "draft",
         emailAccountId: selectedEmailAccount || undefined,
+        sequence: {
+          steps: buildSequenceSteps(),
+        },
+        audience: {
+          temperature: campaignData.audience.temperature,
+          sources: campaignData.audience.sources,
+          filters: campaignData.audience.filters,
+        },
+        settings: {
+          dailyLimit: campaignData.sendSchedule.dailyLimit,
+          sendWindow: { start: "09:00", end: "17:00" },
+          timezone: "Asia/Baghdad",
+          stopOnReply: true,
+          trackOpens: true,
+          trackClicks: true,
+        },
       }
 
       if (savedCampaignId) {
         await campaignsAPI.update(savedCampaignId, payload)
         setStatusMessage({ type: "success", text: "Draft updated successfully!" })
+        return savedCampaignId
       } else {
         const result = await campaignsAPI.create(payload)
-        setSavedCampaignId(result.data?._id || result.campaign?._id)
+        const newId = result.data?._id || result.campaign?._id
+        setSavedCampaignId(newId)
         setStatusMessage({ type: "success", text: "Draft saved successfully!" })
+        return newId
       }
     } catch (err: any) {
       setStatusMessage({ type: "error", text: err.message || "Failed to save draft" })
+      return null
     } finally {
       setSaving(false)
       setTimeout(() => setStatusMessage(null), 4000)
@@ -144,14 +170,15 @@ export default function CreateCampaignPage() {
     setLaunching(true)
     setStatusMessage(null)
     try {
-      // حفظ أولاً إذا لم تُحفظ
-      if (!savedCampaignId) {
-        await handleSaveDraft()
+      // حفظ أولاً إذا لم تُحفظ - get ID directly from return value
+      let campaignId = savedCampaignId
+      if (!campaignId) {
+        campaignId = await handleSaveDraft()
       }
-      if (!savedCampaignId) {
+      if (!campaignId) {
         throw new Error("Failed to save campaign before launching")
       }
-      await campaignsAPI.launch(savedCampaignId)
+      await campaignsAPI.launch(campaignId)
       setStatusMessage({ type: "success", text: "Campaign launched successfully!" })
       // الانتقال لصفحة الحملات بعد ثانيتين
       setTimeout(() => {
