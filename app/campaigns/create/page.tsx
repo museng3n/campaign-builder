@@ -1284,16 +1284,22 @@ export default function CreateCampaignPage() {
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Name:</strong> {campaignData.name || "Tech Startups Q4 Outreach"}
+                      <strong>Name:</strong> {campaignData.name || "Untitled Campaign"}
                     </p>
                     <p>
-                      <strong>Goal:</strong> {campaignData.goal || "Book Meeting"}
+                      <strong>Goal:</strong> {campaignData.goal || "Not set"}
                     </p>
                     <p>
-                      <strong>Industry:</strong> {campaignData.industry || "SaaS/Technology"}
+                      <strong>Industry:</strong> {campaignData.industry || "Not set"}
                     </p>
                     <p>
-                      <strong>Template:</strong> {selectedTemplate?.name || "Alex Berman Pattern Interrupt"}
+                      <strong>Description:</strong> {campaignData.description || "No description"}
+                    </p>
+                    <p>
+                      <strong>Tags:</strong> {campaignData.tags.length > 0 ? campaignData.tags.join(", ") : "None"}
+                    </p>
+                    <p>
+                      <strong>Template:</strong> {selectedTemplate?.name || "None selected"}
                     </p>
                   </div>
                 </CardContent>
@@ -1309,14 +1315,16 @@ export default function CreateCampaignPage() {
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Total Contacts:</strong> 234
+                      <strong>Temperature:</strong> {campaignData.audience.temperature.length > 0
+                        ? campaignData.audience.temperature.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
+                        : "None selected"}
                     </p>
-                    <p>• Cold: 89 (38%)</p>
-                    <p>• Warm: 123 (52%)</p>
-                    <p>• Hot: 22 (10%)</p>
-                    <p className="mt-3">
-                      <strong>Sources:</strong> CSV (156), Apollo (78)
+                    <p>
+                      <strong>Sources:</strong> {campaignData.audience.sources.length > 0
+                        ? campaignData.audience.sources.map(s => s.toUpperCase()).join(", ")
+                        : "None selected"}
                     </p>
+                    <p className="text-gray-500 mt-2">Contacts will be calculated on launch</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1332,17 +1340,14 @@ export default function CreateCampaignPage() {
                   <div className="space-y-2 text-sm">
                     <p>
                       <strong>
-                        {selectedTemplate?.emails || 5} emails over {selectedTemplate?.days || 10} days
+                        {sequenceSteps.filter(s => s.type === "email").length} emails over {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} days
                       </strong>
                     </p>
-                    {selectedTemplate?.structure?.map((email: any, index: number) => (
-                      <p key={index}>
-                        • Day {email.day}: {email.type.replace("_", " ")}
+                    {sequenceSteps.filter(s => s.type === "email").map((step, i) => (
+                      <p key={i}>
+                        • Email {i + 1}: {emailEdits[i]?.subject || "No subject"}
                       </p>
                     ))}
-                    <p className="mt-3">
-                      <strong>A/B Testing:</strong> Subject lines (50/50 split)
-                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -1357,19 +1362,25 @@ export default function CreateCampaignPage() {
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Send Time:</strong> Best time (AI optimized)
+                      <strong>Send Time:</strong> {campaignData.sendSchedule.sendTime === "best" ? "Best time (AI optimized)" : campaignData.sendSchedule.sendTime === "specific" ? campaignData.sendSchedule.specificTime : "Random time"}
                     </p>
                     <p>
-                      <strong>Daily Limit:</strong> 50 emails/day
+                      <strong>Days:</strong> {campaignData.sendSchedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")}
                     </p>
                     <p>
-                      <strong>Warmup:</strong> Enabled (Start 20/day)
+                      <strong>Daily Limit:</strong> {campaignData.sendSchedule.dailyLimit} emails/day
                     </p>
                     <p>
-                      <strong>Stop on Reply:</strong> Yes
+                      <strong>Email Account:</strong> {selectedEmailAccount ? emailAccounts.find((a: any) => a._id === selectedEmailAccount)?.email || "Selected" : "Not selected"}
                     </p>
                     <p>
-                      <strong>Tracking:</strong> Opens, Clicks, Replies
+                      <strong>Stop on Reply:</strong> {campaignData.sequence.stopOnReply ? "Yes" : "No"}
+                    </p>
+                    <p>
+                      <strong>Track Opens:</strong> {campaignData.tracking.opens ? "Yes" : "No"}
+                    </p>
+                    <p>
+                      <strong>Track Clicks:</strong> {campaignData.tracking.clicks ? "Yes" : "No"}
                     </p>
                   </div>
                 </CardContent>
@@ -1378,56 +1389,62 @@ export default function CreateCampaignPage() {
 
             <Card className="bg-purple-50 border-[#7C3AED]">
               <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-4">📊 ESTIMATED RESULTS</h3>
-                <p className="text-sm text-gray-700 mb-2">Based on template benchmarks:</p>
+                <h3 className="font-bold text-lg mb-4">CAMPAIGN SUMMARY</h3>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <strong>Total Sends:</strong> 1,170 emails
+                    <strong>Total emails in sequence:</strong> {sequenceSteps.filter(s => s.type === "email").length}
                   </p>
                   <p>
-                    <strong>Expected Opens:</strong> 274 (23.4%)
+                    <strong>Daily sending limit:</strong> {campaignData.sendSchedule.dailyLimit}
                   </p>
                   <p>
-                    <strong>Expected Replies:</strong> 19 (8.2%)
+                    <strong>Estimated campaign duration:</strong> {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} days
                   </p>
-                  <p>
-                    <strong>Duration:</strong> ~15 days (with send limits)
-                  </p>
+                  <p className="text-gray-500 mt-2">Results will appear after launch</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-green-200">
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-4">⚠️ PRE-LAUNCH CHECKLIST</h3>
-                <div className="space-y-2 text-sm">
-                  {[
-                    "Campaign details complete",
-                    "Target audience defined",
-                    "Sequence configured",
-                    "All emails written",
-                    "Variables mapped",
-                    "Send limits set",
-                    "Domain verified",
-                  ].map((item) => (
-                    <div key={item} className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <span>{item}</span>
+            {(() => {
+              const validations = {
+                hasName: campaignData.name.trim().length > 0,
+                hasEmailAccount: !!selectedEmailAccount,
+                hasEmails: emailEdits.length > 0 && emailEdits.every(e => e.subject.trim() && e.body.trim()),
+                hasAudience: campaignData.audience.temperature.length > 0,
+                hasSources: campaignData.audience.sources.length > 0,
+                hasDays: campaignData.sendSchedule.days.length > 0,
+              }
+              const passedCount = Object.values(validations).filter(Boolean).length
+              const totalCount = Object.keys(validations).length
+              const checkItems = [
+                { key: "hasName" as const, label: "Campaign name set" },
+                { key: "hasEmailAccount" as const, label: "Email account connected" },
+                { key: "hasEmails" as const, label: "All emails have subject + body" },
+                { key: "hasAudience" as const, label: "Target audience selected" },
+                { key: "hasSources" as const, label: "Contact sources selected" },
+                { key: "hasDays" as const, label: "Send days configured" },
+              ]
+              return (
+                <Card className="border-green-200">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-lg mb-4">PRE-LAUNCH CHECKLIST ({passedCount}/{totalCount} passed)</h3>
+                    <div className="space-y-2 text-sm">
+                      {checkItems.map((item) => (
+                        <div key={item.key} className="flex items-center gap-2">
+                          {validations[item.key] ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <X className="w-4 h-4 text-red-500" />
+                          )}
+                          <span className={validations[item.key] ? "" : "text-red-600"}>{item.label}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Spam score check: 2/10 (Good)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <p className="text-xs text-gray-500 mt-3">Spam score available after first send</p>
+                  </CardContent>
+                </Card>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -1460,7 +1477,14 @@ export default function CreateCampaignPage() {
                 <Button
                   className="bg-[#7C3AED] hover:bg-[#6D28D9]"
                   onClick={handleLaunchCampaign}
-                  disabled={launching}
+                  disabled={launching || !(
+                    campaignData.name.trim().length > 0 &&
+                    !!selectedEmailAccount &&
+                    emailEdits.length > 0 && emailEdits.every(e => e.subject.trim() && e.body.trim()) &&
+                    campaignData.audience.temperature.length > 0 &&
+                    campaignData.audience.sources.length > 0 &&
+                    campaignData.sendSchedule.days.length > 0
+                  )}
                 >
                   {launching ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> Launching...</> : "Launch Campaign"}
                 </Button>
