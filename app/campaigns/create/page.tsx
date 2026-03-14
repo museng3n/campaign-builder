@@ -13,6 +13,7 @@ import { ArrowLeft, Mail, Clock, CheckCircle2, X, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { popularTemplates, byGoalTemplates, byIndustryTemplates } from "@/lib/campaign-templates"
 import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 const steps = [
   { name: "Template", nameAr: "قالب" },
@@ -25,6 +26,8 @@ const steps = [
 ]
 
 export default function CreateCampaignPage() {
+  const { toast } = useToast()
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlToken = urlParams.get('token')
@@ -139,6 +142,7 @@ export default function CreateCampaignPage() {
       setEmailEdits([{ subject: "", body: "" }])
       setSequenceSteps([{ type: "email", emailIndex: 0, subject: "", body: "", label: "EMAIL 1" }])
     }
+    toast({ title: `Template '${template.name}' applied successfully` })
     handleNext()
   }
 
@@ -184,7 +188,7 @@ export default function CreateCampaignPage() {
 
         {/* Usage */}
         <div className="text-xs text-gray-500 mb-4">
-          Used {template.stats.usedCount.toLocaleString()} times
+          Used {template.stats.usedCount} times
         </div>
 
         {/* Best For Tags */}
@@ -309,6 +313,7 @@ export default function CreateCampaignPage() {
           type: "error",
           text: `Email step(s) ${emptySteps.map((s: any) => s.stepNumber).join(", ")} missing subject or body. Please fill in all emails.`,
         })
+        toast({ title: "Please fill in all required fields", variant: "destructive" })
         setSaving(false)
         return null
       }
@@ -318,12 +323,14 @@ export default function CreateCampaignPage() {
       if (savedCampaignId) {
         await campaignsAPI.update(savedCampaignId, payload)
         setStatusMessage({ type: "success", text: "Draft updated successfully!" })
+        toast({ title: "Campaign saved as draft" })
         return savedCampaignId
       } else {
         const result = await campaignsAPI.create(payload)
         const newId = result.data?._id || result.campaign?._id
         setSavedCampaignId(newId)
         setStatusMessage({ type: "success", text: "Draft saved successfully!" })
+        toast({ title: "Campaign saved as draft" })
         return newId
       }
     } catch (err: any) {
@@ -354,6 +361,7 @@ export default function CreateCampaignPage() {
       }
       await campaignsAPI.launch(campaignId)
       setStatusMessage({ type: "success", text: "Campaign launched successfully!" })
+      toast({ title: "Campaign launched!" })
       // الانتقال لصفحة الحملات بعد ثانيتين
       setTimeout(() => {
         window.location.href = "/campaigns"
@@ -809,14 +817,33 @@ export default function CreateCampaignPage() {
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-blue-900 mb-2">PREVIEW:</h4>
-                    <p className="text-blue-900 text-lg mb-2">
-                      Estimated Audience: <strong>234 contacts</strong>
-                    </p>
-                    <div className="space-y-1 text-sm text-blue-800">
-                      <p>• Cold: 89 (38%)</p>
-                      <p>• Warm: 123 (52%)</p>
-                      <p>• Hot: 22 (10%)</p>
+                    <div className="mb-3">
+                      <p className="text-sm text-blue-800 mb-2">Temperature:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {campaignData.audience.temperature.length > 0
+                          ? campaignData.audience.temperature.map(t => (
+                              <span key={t} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                {t.charAt(0).toUpperCase() + t.slice(1)}
+                              </span>
+                            ))
+                          : <span className="text-xs text-blue-600">None selected</span>
+                        }
+                      </div>
                     </div>
+                    <div className="mb-3">
+                      <p className="text-sm text-blue-800 mb-2">Sources:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {campaignData.audience.sources.length > 0
+                          ? campaignData.audience.sources.map(s => (
+                              <span key={s} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                {s.toUpperCase()}
+                              </span>
+                            ))
+                          : <span className="text-xs text-blue-600">None selected</span>
+                        }
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600">Contact count will be calculated on launch</p>
                   </CardContent>
                 </Card>
               </CardContent>
@@ -915,6 +942,7 @@ export default function CreateCampaignPage() {
                                       return s
                                     })
                                   })
+                                  toast({ title: "Email step removed" })
                                   if (emailIdx !== undefined) {
                                     setEmailEdits(prev => prev.filter((_, i) => i !== emailIdx))
                                   }
@@ -943,6 +971,7 @@ export default function CreateCampaignPage() {
                         { type: "wait", waitDays: 3 },
                         { type: "email", emailIndex: newEmailIndex, subject: "", body: "", label: `EMAIL ${newEmailIndex + 1}` }
                       ])
+                      toast({ title: "Email step added" })
                     }}
                   >
                     + Add Email Step
@@ -1060,12 +1089,26 @@ export default function CreateCampaignPage() {
                       />
                       <div className="mt-3 text-xs text-gray-500">
                         <p className="mb-2">
-                          <strong>Variables Available:</strong>
+                          <strong>Variables Available:</strong> <span className="text-gray-400">(click to insert)</span>
                         </p>
-                        <p>
-                          {"{firstName}"}, {"{lastName}"}, {"{company}"}, {"{industry}"}, {"{location}"}, {"{achievement}"},{" "}
-                          {"{pain_point}"}, {"{specific_detail}"}, {"{yourName}"}, {"{yourTitle}"}
-                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {["{{firstName}}", "{{lastName}}", "{{company}}", "{{industry}}", "{{location}}", "{{achievement}}", "{{pain_point}}", "{{specific_detail}}", "{{yourName}}", "{{yourTitle}}"].map((variable) => (
+                            <button
+                              key={variable}
+                              type="button"
+                              className="text-xs px-2 py-1 bg-gray-100 hover:bg-purple-50 hover:text-purple-600 rounded transition-colors cursor-pointer"
+                              onClick={() => {
+                                setEmailEdits(prev => prev.map((edit, i) =>
+                                  i === index
+                                    ? { ...edit, body: edit.body + " " + variable }
+                                    : edit
+                                ))
+                              }}
+                            >
+                              {variable}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -1158,7 +1201,7 @@ export default function CreateCampaignPage() {
                           }))}
                         />
                         <Label htmlFor="random-time" className="font-normal">
-                          Random time (between 09:00 - 17:00)
+                          Random time during business hours
                         </Label>
                       </div>
                     </div>
@@ -1191,7 +1234,11 @@ export default function CreateCampaignPage() {
 
                     <Card className="bg-blue-50 border-blue-200">
                       <CardContent className="p-3 text-sm text-blue-900">
-                        💡 Industry benchmark: Tech companies respond best between 10-11 AM on Tue-Thu
+                        {campaignData.sendSchedule.sendTime === "best"
+                          ? "AI will optimize send times for best results"
+                          : campaignData.sendSchedule.days.some(d => ["sat", "sun"].includes(d))
+                            ? "Weekend sending may have lower open rates"
+                            : "Sending emails during business hours on weekdays typically yields higher open rates"}
                       </CardContent>
                     </Card>
                   </div>
@@ -1223,7 +1270,7 @@ export default function CreateCampaignPage() {
 
                     <Card className="bg-orange-50 border-orange-200">
                       <CardContent className="p-3 text-sm text-orange-900">
-                        <p className="mb-1">⚠️ Your domain age: 2 months</p>
+                        <p className="mb-1">Domain health will be checked before first send</p>
                         <p>Recommended limit: 30-50 emails/day</p>
                       </CardContent>
                     </Card>
@@ -1238,7 +1285,9 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="warmup" className="font-normal">
-                        Gradual warmup (Start 20/day, +10 every 3 days)
+                        {campaignData.sendSchedule.warmup
+                          ? "Warmup enabled: gradually increases daily volume"
+                          : "Warmup disabled: sending at full volume from day 1"}
                       </Label>
                     </div>
                   </div>

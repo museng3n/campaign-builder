@@ -11,9 +11,9 @@ export const popularTemplates = [
     days: 7,
     schedule: [0, 3, 7],
     stats: {
-      avgOpenRate: 22,
-      avgReplyRate: 9,
-      usedCount: 3200,
+      avgOpenRate: "20-25",
+      avgReplyRate: "9-12",
+      usedCount: "3,000+",
     },
     structure: [
       {
@@ -50,9 +50,9 @@ export const popularTemplates = [
     days: 14,
     schedule: [0, 3, 6, 10, 14],
     stats: {
-      avgOpenRate: 28,
-      avgReplyRate: 8,
-      usedCount: 2400,
+      avgOpenRate: "25-30",
+      avgReplyRate: "7-10",
+      usedCount: "2,400+",
     },
     structure: [
       {
@@ -101,9 +101,9 @@ export const popularTemplates = [
     days: 5,
     schedule: [0, 5],
     stats: {
-      avgOpenRate: 35,
-      avgReplyRate: 14,
-      usedCount: 1800,
+      avgOpenRate: "30-40",
+      avgReplyRate: "12-18",
+      usedCount: "1,800+",
     },
     structure: [
       {
@@ -134,9 +134,9 @@ export const popularTemplates = [
     days: 7,
     schedule: [0, 3, 7],
     stats: {
-      avgOpenRate: 25,
-      avgReplyRate: 10,
-      usedCount: 1950,
+      avgOpenRate: "25-35",
+      avgReplyRate: "10-15",
+      usedCount: "2,800+",
     },
     structure: [
       {
@@ -173,9 +173,9 @@ export const popularTemplates = [
     days: 7,
     schedule: [0, 4, 7],
     stats: {
-      avgOpenRate: 20,
-      avgReplyRate: 7,
-      usedCount: 1400,
+      avgOpenRate: "20-28",
+      avgReplyRate: "8-12",
+      usedCount: "2,200+",
     },
     structure: [
       {
@@ -212,9 +212,9 @@ export const popularTemplates = [
     days: 10,
     schedule: [0, 5, 10],
     stats: {
-      avgOpenRate: 24,
-      avgReplyRate: 11,
-      usedCount: 2100,
+      avgOpenRate: "40-50",
+      avgReplyRate: "5-13",
+      usedCount: "3,500+",
     },
     structure: [
       {
@@ -251,9 +251,9 @@ export const popularTemplates = [
     days: 10,
     schedule: [0, 3, 7, 10],
     stats: {
-      avgOpenRate: 21,
-      avgReplyRate: 8,
-      usedCount: 1650,
+      avgOpenRate: "20-30",
+      avgReplyRate: "6-10",
+      usedCount: "2,600+",
     },
     structure: [
       {
@@ -296,9 +296,9 @@ export const popularTemplates = [
     days: 10,
     schedule: [0, 3, 7, 10],
     stats: {
-      avgOpenRate: 30,
-      avgReplyRate: 16,
-      usedCount: 2800,
+      avgOpenRate: "25-35",
+      avgReplyRate: "16-25",
+      usedCount: "1,500+",
     },
     structure: [
       {
@@ -341,9 +341,9 @@ export const popularTemplates = [
     days: 42,
     schedule: [0, 3, 7, 12, 18, 25, 32, 42],
     stats: {
-      avgOpenRate: 18,
-      avgReplyRate: 12,
-      usedCount: 1100,
+      avgOpenRate: "20-30",
+      avgReplyRate: "10-20",
+      usedCount: "1,200+",
     },
     structure: [
       {
@@ -410,9 +410,9 @@ export const popularTemplates = [
     days: 12,
     schedule: [0, 4, 8, 12],
     stats: {
-      avgOpenRate: 32,
-      avgReplyRate: 13,
-      usedCount: 1750,
+      avgOpenRate: "30-40",
+      avgReplyRate: "12-18",
+      usedCount: "2,000+",
     },
     structure: [
       {
@@ -455,9 +455,9 @@ export const popularTemplates = [
     days: 17,
     schedule: [0, 2, 5, 10, 17],
     stats: {
-      avgOpenRate: 26,
-      avgReplyRate: 11,
-      usedCount: 1300,
+      avgOpenRate: "25-35",
+      avgReplyRate: "8-15",
+      usedCount: "1,800+",
     },
     structure: [
       {
@@ -506,9 +506,9 @@ export const popularTemplates = [
     days: 10,
     schedule: [0, 5, 10],
     stats: {
-      avgOpenRate: 19,
-      avgReplyRate: 7,
-      usedCount: 950,
+      avgOpenRate: "20-30",
+      avgReplyRate: "8-14",
+      usedCount: "1,600+",
     },
     structure: [
       {
