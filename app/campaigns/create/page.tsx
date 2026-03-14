@@ -46,6 +46,7 @@ export default function CreateCampaignPage() {
   const [emailAccounts, setEmailAccounts] = useState<any[]>([])
   const [selectedEmailAccount, setSelectedEmailAccount] = useState("")
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [emailEdits, setEmailEdits] = useState<{ subject: string; body: string }[]>([])
 
   const [campaignData, setCampaignData] = useState({
     name: "",
@@ -81,6 +82,16 @@ export default function CreateCampaignPage() {
 
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template)
+    if (template?.structure?.length) {
+      setEmailEdits(
+        template.structure.map((email: any) => ({
+          subject: email.subject || "",
+          body: email.body || "",
+        }))
+      )
+    } else {
+      setEmailEdits([{ subject: "", body: "" }])
+    }
     handleNext()
   }
 
@@ -100,18 +111,22 @@ export default function CreateCampaignPage() {
     fetchEmailAccounts()
   }, [])
 
-  // Build sequence steps from template structure
+  // Build sequence steps from user-edited emails, falling back to template defaults
   const buildSequenceSteps = () => {
     if (!selectedTemplate?.structure?.length) {
-      return [{ stepNumber: 1, delayDays: 0, subject: "", body: "", type: "initial" }]
+      const edit = emailEdits[0] || { subject: "", body: "" }
+      return [{ stepNumber: 1, delayDays: 0, subject: edit.subject, body: edit.body, type: "initial" }]
     }
-    return selectedTemplate.structure.map((email: any, index: number) => ({
-      stepNumber: index + 1,
-      delayDays: index === 0 ? 0 : email.day,
-      subject: email.subject || "",
-      body: email.body || "",
-      type: index === 0 ? "initial" : "follow_up",
-    }))
+    return selectedTemplate.structure.map((email: any, index: number) => {
+      const edit = emailEdits[index] || { subject: "", body: "" }
+      return {
+        stepNumber: index + 1,
+        delayDays: index === 0 ? 0 : email.day,
+        subject: edit.subject || email.subject || "",
+        body: edit.body || email.body || "",
+        type: index === 0 ? "initial" : "follow_up",
+      }
+    })
   }
 
   // حفظ كمسودة - returns campaign ID
@@ -140,6 +155,21 @@ export default function CreateCampaignPage() {
           trackClicks: true,
         },
       }
+
+      // Validate that all email steps have non-empty subject and body
+      const emptySteps = payload.sequence.steps.filter(
+        (s: any) => !s.subject.trim() || !s.body.trim()
+      )
+      if (emptySteps.length > 0) {
+        setStatusMessage({
+          type: "error",
+          text: `Email step(s) ${emptySteps.map((s: any) => s.stepNumber).join(", ")} missing subject or body. Please fill in all emails.`,
+        })
+        setSaving(false)
+        return null
+      }
+
+      console.log('Campaign payload:', JSON.stringify(payload, null, 2))
 
       if (savedCampaignId) {
         await campaignsAPI.update(savedCampaignId, payload)
@@ -676,97 +706,75 @@ export default function CreateCampaignPage() {
 
         {/* Step 5: Email Composer */}
         {currentStep === 4 && (
-          <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardContent className="p-8 space-y-6">
-                <div>
-                  <h3 className="text-xl font-bold mb-2">Email 1: Pattern Interrupt (Day 0)</h3>
-                </div>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {emailEdits.map((edit, index) => {
+              const templateEmail = selectedTemplate?.structure?.[index]
+              return (
+                <Card key={index}>
+                  <CardContent className="p-8 space-y-6">
+                    <div>
+                      <h3 className="text-xl font-bold mb-2">
+                        Email {index + 1}: {templateEmail?.type?.replace("_", " ") || "Email"} (Day {templateEmail?.day ?? index})
+                      </h3>
+                    </div>
 
-                <div>
-                  <Label htmlFor="subject">Subject Line *</Label>
-                  <Input id="subject" placeholder="Noticed {{company}}'s recent {{achievement}}" className="mt-2" />
-                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm font-semibold text-blue-900 mb-2">💡 AI Suggestions:</p>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Quick question about {"{company}"}</li>
-                      <li>
-                        • {"{firstName}"}, impressive work on {"{achievement}"}
-                      </li>
-                      <li>• Curious about your approach to {"{pain_point}"}</li>
-                    </ul>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <Checkbox id="ab-test" />
-                    <Label htmlFor="ab-test" className="font-normal">
-                      Enable A/B testing (2 variants)
-                    </Label>
-                  </div>
-                </div>
+                    <div>
+                      <Label htmlFor={`subject-${index}`}>Subject Line *</Label>
+                      <Input
+                        id={`subject-${index}`}
+                        placeholder={templateEmail?.subject || "Enter subject line..."}
+                        className="mt-2"
+                        value={edit.subject}
+                        onChange={(e) => {
+                          const updated = [...emailEdits]
+                          updated[index] = { ...updated[index], subject: e.target.value }
+                          setEmailEdits(updated)
+                        }}
+                      />
+                      {index === 0 && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-sm font-semibold text-blue-900 mb-2">AI Suggestions:</p>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            <li>- Quick question about {"{company}"}</li>
+                            <li>- {"{firstName}"}, impressive work on {"{achievement}"}</li>
+                            <li>- Curious about your approach to {"{pain_point}"}</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
 
-                <div>
-                  <Label htmlFor="body">Email Body *</Label>
-                  <Textarea
-                    id="body"
-                    className="mt-2 font-mono text-sm"
-                    rows={10}
-                    placeholder="Hi {{firstName}},
-
-Saw your recent {{achievement}} - impressive work on {{specific_detail}}.
-
-Quick question: Are you handling {{pain_point}} manually or have you found a better way?
-
-{{yourName}}"
-                  />
-                  <div className="mt-3 text-xs text-gray-500">
-                    <p className="mb-2">
-                      <strong>Variables Available:</strong>
-                    </p>
-                    <p>
-                      {"{firstName}"}, {"{lastName}"}, {"{company}"}, {"{industry}"}, {"{location}"}, {"{achievement}"},{" "}
-                      {"{pain_point}"}, {"{specific_detail}"}, {"{yourName}"}, {"{yourTitle}"}
-                    </p>
-                  </div>
-                </div>
-
-                <Card className="bg-gray-50">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold mb-3">PREVIEW</h4>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <strong>Subject:</strong> Noticed Triggerio's recent product launch
-                      </p>
-                      <div className="mt-3 whitespace-pre-line text-gray-700">
-                        Hi Haider,{"\n\n"}
-                        Saw your recent product launch - impressive work on the automation features.{"\n\n"}
-                        Quick question: Are you handling cold email warmup manually or have you found a better way?
-                        {"\n\n"}
-                        Alex
+                    <div>
+                      <Label htmlFor={`body-${index}`}>Email Body *</Label>
+                      <Textarea
+                        id={`body-${index}`}
+                        className="mt-2 font-mono text-sm"
+                        rows={8}
+                        placeholder={`Hi {{firstName}},\n\nWrite your email body here...\n\n{{yourName}}`}
+                        value={edit.body}
+                        onChange={(e) => {
+                          const updated = [...emailEdits]
+                          updated[index] = { ...updated[index], body: e.target.value }
+                          setEmailEdits(updated)
+                        }}
+                      />
+                      <div className="mt-3 text-xs text-gray-500">
+                        <p className="mb-2">
+                          <strong>Variables Available:</strong>
+                        </p>
+                        <p>
+                          {"{firstName}"}, {"{lastName}"}, {"{company}"}, {"{industry}"}, {"{location}"}, {"{achievement}"},{" "}
+                          {"{pain_point}"}, {"{specific_detail}"}, {"{yourName}"}, {"{yourTitle}"}
+                        </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="border-green-200 bg-green-50">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-green-700 font-semibold">SPAM SCORE: 2/10 ✅</p>
-                        <p className="text-green-600">Excellent</p>
-                      </div>
-                      <div>
-                        <p className="text-green-700 font-semibold">WORD COUNT: 42 ✅</p>
-                        <p className="text-green-600">Perfect</p>
-                      </div>
-                      <div>
-                        <p className="text-green-700 font-semibold">READING TIME: 15s ✅</p>
-                        <p className="text-green-600">Good</p>
-                      </div>
-                    </div>
+                    {!edit.subject.trim() || !edit.body.trim() ? (
+                      <p className="text-sm text-red-500">Please fill in both subject and body for this email.</p>
+                    ) : null}
                   </CardContent>
                 </Card>
-              </CardContent>
-            </Card>
+              )
+            })}
           </div>
         )}
 
