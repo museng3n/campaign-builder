@@ -68,6 +68,16 @@ export default function CreateCampaignPage() {
   const [sequenceType, setSequenceType] = useState<"linear" | "graph">("linear")
   const [sequenceGraph, setSequenceGraph] = useState<SequenceGraph>({ steps: [], startStepId: null, version: 1 })
 
+  // GHL-69: Audience Type & Count
+  const [audienceType, setAudienceType] = useState('all')
+  const [audienceCount, setAudienceCount] = useState<number | null>(null)
+  const [audienceBreakdown, setAudienceBreakdown] = useState<any>({})
+  const [audienceLoading, setAudienceLoading] = useState(false)
+  const [availableGroups, setAvailableGroups] = useState<string[]>([])
+  const [availableCsvLists, setAvailableCsvLists] = useState<any[]>([])
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+  const [selectedCsvListId, setSelectedCsvListId] = useState('')
+
   const [campaignData, setCampaignData] = useState({
     name: "",
     goal: "",
@@ -426,6 +436,76 @@ export default function CreateCampaignPage() {
     }
   }
 
+  // GHL-69: API helpers for audience count
+  const getToken = () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('triggerio_token') || ''
+    }
+    return ''
+  }
+
+  const API_BASE = 'https://triggerio-backend.onrender.com'
+
+  const fetchAudienceCount = async () => {
+    setAudienceLoading(true)
+    try {
+      const body: any = { audienceType }
+      if (audienceType === 'filter') {
+        body.temperature = campaignData.audience?.temperature || []
+        body.sources = campaignData.audience?.sources || []
+        body.filters = campaignData.audience?.filters || {}
+      } else if (audienceType === 'groups') {
+        body.groups = selectedGroups
+      } else if (audienceType === 'csv') {
+        body.csvListId = selectedCsvListId
+      }
+      const res = await fetch(`${API_BASE}/api/campaigns/audience-count`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(body)
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAudienceCount(data.count)
+        setAudienceBreakdown(data.breakdown || {})
+      }
+    } catch (err) {
+      console.error('Error fetching audience count:', err)
+    }
+    setAudienceLoading(false)
+  }
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/campaigns/groups-list`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAvailableGroups(data.groups || [])
+      }
+    } catch (err) {
+      console.error('Error fetching groups:', err)
+    }
+  }
+
+  const fetchCsvLists = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/campaigns/csv-lists`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAvailableCsvLists(data.lists || [])
+      }
+    } catch (err) {
+      console.error('Error fetching CSV lists:', err)
+    }
+  }
+
   // إرسال بريد تجريبي
   const handleSendTestEmail = async () => {
     if (!selectedEmailAccount) {
@@ -440,6 +520,22 @@ export default function CreateCampaignPage() {
       setStatusMessage({ type: "error", text: err.message || "Failed to send test email" })
     }
   }
+
+  // GHL-69: Fetch groups and CSV lists when entering Step 3 (index 2)
+  useEffect(() => {
+    if (currentStep === 2) {
+      fetchGroups()
+      fetchCsvLists()
+      fetchAudienceCount()
+    }
+  }, [currentStep])
+
+  // GHL-69: Re-fetch count when audience type or filters change
+  useEffect(() => {
+    if (currentStep === 2) {
+      fetchAudienceCount()
+    }
+  }, [audienceType, selectedGroups, selectedCsvListId, campaignData.audience?.temperature, campaignData.audience?.sources])
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]" dir="rtl">
@@ -705,135 +801,306 @@ export default function CreateCampaignPage() {
           <div className="max-w-4xl mx-auto space-y-6">
             <Card>
               <CardContent className="p-8 space-y-6">
-                <div>
-                  <Label className="text-lg font-semibold mb-4 block">1. Temperature Targeting</Label>
-                  <div className="space-y-3">
+
+                {/* ===== AUDIENCE TYPE SELECTOR ===== */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Who will receive this campaign?</h3>
+                  <div className="space-y-2">
                     {[
-                      { value: "cold", label: "Cold (Never contacted)" },
-                      { value: "warm", label: "Warm (Opened/Clicked before)" },
-                      { value: "hot", label: "Hot (Replied before)" },
-                      { value: "frozen", label: "Frozen (No activity 30+ days)" },
-                    ].map((temp) => (
-                      <div key={temp.value} className="flex items-center gap-2">
-                        <Checkbox
-                          id={temp.value}
-                          checked={campaignData.audience.temperature.includes(temp.value)}
-                          onCheckedChange={(checked) => {
+                      { value: 'all', label: 'All Contacts', desc: 'Send to everyone in your contact list' },
+                      { value: 'csv', label: 'Specific CSV List', desc: 'Send to contacts from a specific CSV import' },
+                      { value: 'groups', label: 'Specific Group(s)', desc: 'Send to contacts in selected groups' },
+                      { value: 'filter', label: 'Custom Filter', desc: 'Filter by temperature, source, tags, etc.' },
+                      { value: 'single', label: 'Single Contact', desc: 'Send to one specific contact' },
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                          audienceType === option.value
+                            ? 'border-purple-400 bg-purple-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="audienceType"
+                          value={option.value}
+                          checked={audienceType === option.value}
+                          onChange={(e) => {
+                            setAudienceType(e.target.value)
                             setCampaignData(prev => ({
                               ...prev,
-                              audience: {
-                                ...prev.audience,
-                                temperature: checked
-                                  ? [...prev.audience.temperature, temp.value]
-                                  : prev.audience.temperature.filter(t => t !== temp.value)
-                              }
+                              audience: { ...prev.audience, audienceType: e.target.value }
                             }))
                           }}
+                          className="mt-1 accent-purple-500"
                         />
-                        <Label htmlFor={temp.value} className="font-normal">
-                          {temp.label}
-                        </Label>
-                      </div>
+                        <div>
+                          <div className="font-medium text-gray-800">{option.label}</div>
+                          <div className="text-sm text-gray-500">{option.desc}</div>
+                        </div>
+                      </label>
                     ))}
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-lg font-semibold mb-4 block">2. Source Filters</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: "csv", label: "CSV Import" },
-                      { value: "apollo", label: "Apollo.io" },
-                      { value: "hunter", label: "Hunter.io" },
-                      { value: "linkedin", label: "LinkedIn" },
-                      { value: "instagram", label: "Instagram (engaged)" },
-                      { value: "facebook", label: "Facebook" },
-                      { value: "manual", label: "Manual Entry" },
-                    ].map((source) => (
-                      <div key={source.value} className="flex items-center gap-2">
-                        <Checkbox
-                          id={source.value}
-                          checked={campaignData.audience.sources.includes(source.value)}
-                          onCheckedChange={(checked) => {
-                            setCampaignData(prev => ({
-                              ...prev,
-                              audience: {
-                                ...prev.audience,
-                                sources: checked
-                                  ? [...prev.audience.sources, source.value]
-                                  : prev.audience.sources.filter(s => s !== source.value)
-                              }
-                            }))
-                          }}
-                        />
-                        <Label htmlFor={source.value} className="font-normal">
-                          {source.label}
-                        </Label>
+                {/* ===== CSV LIST SELECTOR ===== */}
+                {audienceType === 'csv' && (
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-gray-700 mb-3">Select CSV List</h4>
+                    {availableCsvLists.length > 0 ? (
+                      <div className="space-y-2">
+                        {availableCsvLists.map((list: any) => (
+                          <label
+                            key={list.csvListId}
+                            className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                              selectedCsvListId === list.csvListId
+                                ? 'border-blue-400 bg-blue-100'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name="csvList"
+                                value={list.csvListId}
+                                checked={selectedCsvListId === list.csvListId}
+                                onChange={(e) => {
+                                  setSelectedCsvListId(e.target.value)
+                                  setCampaignData(prev => ({
+                                    ...prev,
+                                    audience: { ...prev.audience, csvListId: e.target.value }
+                                  }))
+                                }}
+                                className="accent-blue-500"
+                              />
+                              <span className="font-medium text-gray-700">{list.csvListId}</span>
+                            </div>
+                            <span className="text-sm text-gray-500">{list.count} contacts</span>
+                          </label>
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <p className="text-gray-500 text-sm">No CSV lists found. Import contacts via CSV first.</p>
+                    )}
                   </div>
+                )}
+
+                {/* ===== GROUPS SELECTOR ===== */}
+                {audienceType === 'groups' && (
+                  <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-gray-700 mb-3">Select Group(s)</h4>
+                    {availableGroups.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {availableGroups.map((group: string) => (
+                          <button
+                            key={group}
+                            type="button"
+                            onClick={() => {
+                              const newGroups = selectedGroups.includes(group)
+                                ? selectedGroups.filter((g) => g !== group)
+                                : [...selectedGroups, group]
+                              setSelectedGroups(newGroups)
+                              setCampaignData(prev => ({
+                                ...prev,
+                                audience: { ...prev.audience, selectedGroups: newGroups }
+                              }))
+                            }}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                              selectedGroups.includes(group)
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:border-green-400'
+                            }`}
+                          >
+                            {group}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">No groups found. Assign groups to contacts first.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* ===== CUSTOM FILTER ===== */}
+                {audienceType === 'filter' && (
+                  <div className="mb-6 space-y-6">
+                    <div>
+                      <Label className="text-lg font-semibold mb-4 block">1. Temperature Targeting</Label>
+                      <div className="space-y-3">
+                        {[
+                          { value: "cold", label: "Cold (Never contacted)" },
+                          { value: "warm", label: "Warm (Opened/Clicked before)" },
+                          { value: "hot", label: "Hot (Replied before)" },
+                          { value: "frozen", label: "Frozen (No activity 30+ days)" },
+                        ].map((temp) => (
+                          <div key={temp.value} className="flex items-center gap-2">
+                            <Checkbox
+                              id={temp.value}
+                              checked={campaignData.audience.temperature.includes(temp.value)}
+                              onCheckedChange={(checked) => {
+                                setCampaignData(prev => ({
+                                  ...prev,
+                                  audience: {
+                                    ...prev.audience,
+                                    temperature: checked
+                                      ? [...prev.audience.temperature, temp.value]
+                                      : prev.audience.temperature.filter(t => t !== temp.value)
+                                  }
+                                }))
+                              }}
+                            />
+                            <Label htmlFor={temp.value} className="font-normal">
+                              {temp.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-lg font-semibold mb-4 block">2. Source Filters</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { value: "csv", label: "CSV Import" },
+                          { value: "apollo", label: "Apollo.io" },
+                          { value: "hunter", label: "Hunter.io" },
+                          { value: "linkedin", label: "LinkedIn" },
+                          { value: "instagram", label: "Instagram (engaged)" },
+                          { value: "facebook", label: "Facebook" },
+                          { value: "manual", label: "Manual Entry" },
+                        ].map((source) => (
+                          <div key={source.value} className="flex items-center gap-2">
+                            <Checkbox
+                              id={source.value}
+                              checked={campaignData.audience.sources.includes(source.value)}
+                              onCheckedChange={(checked) => {
+                                setCampaignData(prev => ({
+                                  ...prev,
+                                  audience: {
+                                    ...prev.audience,
+                                    sources: checked
+                                      ? [...prev.audience.sources, source.value]
+                                      : prev.audience.sources.filter(s => s !== source.value)
+                                  }
+                                }))
+                              }}
+                            />
+                            <Label htmlFor={source.value} className="font-normal">
+                              {source.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-lg font-semibold mb-4 block">3. Advanced Filters</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="filter-industry">Industry</Label>
+                          <Input
+                            id="filter-industry"
+                            placeholder="Technology"
+                            className="mt-2"
+                            value={campaignData.audience.filters.industry}
+                            onChange={(e) => setCampaignData(prev => ({
+                              ...prev,
+                              audience: { ...prev.audience, filters: { ...prev.audience.filters, industry: e.target.value } }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="filter-location">Location</Label>
+                          <Input
+                            id="filter-location"
+                            placeholder="Dubai, UAE"
+                            className="mt-2"
+                            value={campaignData.audience.filters.location}
+                            onChange={(e) => setCampaignData(prev => ({
+                              ...prev,
+                              audience: { ...prev.audience, filters: { ...prev.audience.filters, location: e.target.value } }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="filter-tags">Tags</Label>
+                          <Input
+                            id="filter-tags"
+                            placeholder="VIP, Interested"
+                            className="mt-2"
+                            value={campaignData.audience.filters.tags}
+                            onChange={(e) => setCampaignData(prev => ({
+                              ...prev,
+                              audience: { ...prev.audience, filters: { ...prev.audience.filters, tags: e.target.value } }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="filter-groups">Groups</Label>
+                          <Input
+                            id="filter-groups"
+                            placeholder="Q4 Leads"
+                            className="mt-2"
+                            value={campaignData.audience.filters.groups}
+                            onChange={(e) => setCampaignData(prev => ({
+                              ...prev,
+                              audience: { ...prev.audience, filters: { ...prev.audience.filters, groups: e.target.value } }
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ===== AUDIENCE COUNT DISPLAY ===== */}
+                <div className={`mt-6 p-4 rounded-lg border-2 ${
+                  audienceCount !== null && audienceCount > 0
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="font-semibold text-gray-700">
+                        {audienceLoading ? 'Counting...' : `${audienceCount !== null ? audienceCount.toLocaleString() : '—'} contacts will receive this campaign`}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchAudienceCount}
+                      disabled={audienceLoading}
+                      className="text-sm text-purple-500 hover:text-purple-700 font-medium"
+                    >
+                      {audienceLoading ? '...' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {audienceCount !== null && audienceCount > 0 && audienceBreakdown?.byTemperature && Object.keys(audienceBreakdown.byTemperature).length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs text-gray-500 mb-2">Breakdown by temperature:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(audienceBreakdown.byTemperature).map(([temp, count]: [string, any]) => (
+                          <span key={temp} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            temp === 'hot' ? 'bg-red-100 text-red-700' :
+                            temp === 'warm' ? 'bg-orange-100 text-orange-700' :
+                            temp === 'cold' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {temp.charAt(0).toUpperCase() + temp.slice(1)}: {count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
+                {/* ===== EXCLUSIONS (always visible) ===== */}
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">3. Advanced Filters</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="filter-industry">Industry</Label>
-                      <Input
-                        id="filter-industry"
-                        placeholder="Technology"
-                        className="mt-2"
-                        value={campaignData.audience.filters.industry}
-                        onChange={(e) => setCampaignData(prev => ({
-                          ...prev,
-                          audience: { ...prev.audience, filters: { ...prev.audience.filters, industry: e.target.value } }
-                        }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="filter-location">Location</Label>
-                      <Input
-                        id="filter-location"
-                        placeholder="Dubai, UAE"
-                        className="mt-2"
-                        value={campaignData.audience.filters.location}
-                        onChange={(e) => setCampaignData(prev => ({
-                          ...prev,
-                          audience: { ...prev.audience, filters: { ...prev.audience.filters, location: e.target.value } }
-                        }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="filter-tags">Tags</Label>
-                      <Input
-                        id="filter-tags"
-                        placeholder="VIP, Interested"
-                        className="mt-2"
-                        value={campaignData.audience.filters.tags}
-                        onChange={(e) => setCampaignData(prev => ({
-                          ...prev,
-                          audience: { ...prev.audience, filters: { ...prev.audience.filters, tags: e.target.value } }
-                        }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="filter-groups">Groups</Label>
-                      <Input
-                        id="filter-groups"
-                        placeholder="Q4 Leads"
-                        className="mt-2"
-                        value={campaignData.audience.filters.groups}
-                        onChange={(e) => setCampaignData(prev => ({
-                          ...prev,
-                          audience: { ...prev.audience, filters: { ...prev.audience.filters, groups: e.target.value } }
-                        }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-lg font-semibold mb-4 block">4. Exclusions</Label>
+                  <Label className="text-lg font-semibold mb-4 block">Exclusions</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -877,38 +1144,6 @@ export default function CreateCampaignPage() {
                   </div>
                 </div>
 
-                <Card className="bg-blue-50 border-blue-200">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-blue-900 mb-2">PREVIEW:</h4>
-                    <div className="mb-3">
-                      <p className="text-sm text-blue-800 mb-2">Temperature:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {campaignData.audience.temperature.length > 0
-                          ? campaignData.audience.temperature.map(t => (
-                              <span key={t} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                {t.charAt(0).toUpperCase() + t.slice(1)}
-                              </span>
-                            ))
-                          : <span className="text-xs text-blue-600">None selected</span>
-                        }
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <p className="text-sm text-blue-800 mb-2">Sources:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {campaignData.audience.sources.length > 0
-                          ? campaignData.audience.sources.map(s => (
-                              <span key={s} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                                {s.toUpperCase()}
-                              </span>
-                            ))
-                          : <span className="text-xs text-blue-600">None selected</span>
-                        }
-                      </div>
-                    </div>
-                    <p className="text-xs text-blue-600">Contact count will be calculated on launch</p>
-                  </CardContent>
-                </Card>
               </CardContent>
             </Card>
           </div>
@@ -1520,16 +1755,42 @@ export default function CreateCampaignPage() {
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Temperature:</strong> {campaignData.audience.temperature.length > 0
-                        ? campaignData.audience.temperature.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
-                        : "None selected"}
+                      <strong>Audience Type:</strong>{" "}
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                        {audienceType === 'all' ? 'All Contacts' :
+                         audienceType === 'csv' ? 'Specific CSV List' :
+                         audienceType === 'groups' ? 'Specific Group(s)' :
+                         audienceType === 'filter' ? 'Custom Filter' :
+                         audienceType === 'single' ? 'Single Contact' : audienceType}
+                      </span>
                     </p>
+                    {audienceType === 'csv' && selectedCsvListId && (
+                      <p><strong>CSV List:</strong> {selectedCsvListId}</p>
+                    )}
+                    {audienceType === 'groups' && selectedGroups.length > 0 && (
+                      <p><strong>Groups:</strong> {selectedGroups.join(', ')}</p>
+                    )}
+                    {audienceType === 'filter' && (
+                      <>
+                        <p>
+                          <strong>Temperature:</strong> {campaignData.audience.temperature.length > 0
+                            ? campaignData.audience.temperature.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
+                            : "None selected"}
+                        </p>
+                        <p>
+                          <strong>Sources:</strong> {campaignData.audience.sources.length > 0
+                            ? campaignData.audience.sources.map(s => s.toUpperCase()).join(", ")
+                            : "None selected"}
+                        </p>
+                      </>
+                    )}
                     <p>
-                      <strong>Sources:</strong> {campaignData.audience.sources.length > 0
-                        ? campaignData.audience.sources.map(s => s.toUpperCase()).join(", ")
-                        : "None selected"}
+                      <strong>Estimated Contacts:</strong>{" "}
+                      {audienceCount !== null
+                        ? <span className="text-green-600 font-semibold">{audienceCount.toLocaleString()} contacts</span>
+                        : <span className="text-gray-400">Not calculated yet</span>
+                      }
                     </p>
-                    <p className="text-gray-500 mt-2">Contacts will be calculated on launch</p>
                   </div>
                 </CardContent>
               </Card>
