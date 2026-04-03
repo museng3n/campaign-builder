@@ -77,6 +77,10 @@ export default function CreateCampaignPage() {
   const [availableCsvLists, setAvailableCsvLists] = useState<any[]>([])
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
   const [selectedCsvListId, setSelectedCsvListId] = useState('')
+  const [singleContactSearch, setSingleContactSearch] = useState('')
+  const [singleContactResults, setSingleContactResults] = useState<any[]>([])
+  const [selectedSingleContact, setSelectedSingleContact] = useState<any>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
 
   const [campaignData, setCampaignData] = useState({
     name: "",
@@ -120,6 +124,12 @@ export default function CreateCampaignPage() {
   })
 
   const handleNext = () => {
+    if (currentStep === 2 && audienceType === 'single' && selectedSingleContact) {
+      setCampaignData(prev => ({
+        ...prev,
+        audience: { ...prev.audience, audienceType: 'single', singleContactId: selectedSingleContact._id }
+      }));
+    }
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     }
@@ -447,6 +457,12 @@ export default function CreateCampaignPage() {
   const API_BASE = 'https://triggerio-backend.onrender.com'
 
   const fetchAudienceCount = async () => {
+    // For single contact, count is 1 if selected, 0 if not
+    if (audienceType === 'single') {
+      setAudienceCount(selectedSingleContact ? 1 : 0);
+      setAudienceLoading(false);
+      return;
+    }
     setAudienceLoading(true)
     try {
       const body: any = { audienceType }
@@ -506,6 +522,26 @@ export default function CreateCampaignPage() {
     }
   }
 
+  const searchContacts = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSingleContactResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/contacts?search=${encodeURIComponent(query)}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSingleContactResults(data.contacts || data.data || data || []);
+      }
+    } catch (err) {
+      console.error('Error searching contacts:', err);
+    }
+    setSearchLoading(false);
+  };
+
   // إرسال بريد تجريبي
   const handleSendTestEmail = async () => {
     if (!selectedEmailAccount) {
@@ -535,7 +571,7 @@ export default function CreateCampaignPage() {
     if (currentStep === 2) {
       fetchAudienceCount()
     }
-  }, [audienceType, selectedGroups, selectedCsvListId, campaignData.audience?.temperature, campaignData.audience?.sources])
+  }, [audienceType, selectedGroups, selectedCsvListId, selectedSingleContact, campaignData.audience?.temperature, campaignData.audience?.sources])
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]" dir="rtl">
@@ -881,7 +917,25 @@ export default function CreateCampaignPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-sm">No CSV lists found. Import contacts via CSV first.</p>
+                      <div className="text-center py-6">
+                        <svg className="w-10 h-10 text-blue-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        <p className="text-gray-500 text-sm mb-3">لا توجد قوائم CSV بعد</p>
+                        <p className="text-gray-400 text-xs mb-4">ارفع ملف CSV من صفحة جهات الاتصال أولاً</p>
+                        <button
+                          type="button"
+                          onClick={() => window.open('/contacts?action=import', '_blank')}
+                          className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-all duration-300"
+                        >
+                          <span className="flex items-center gap-2 justify-center">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            رفع ملف CSV
+                          </span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -891,33 +945,137 @@ export default function CreateCampaignPage() {
                   <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
                     <h4 className="font-medium text-gray-700 mb-3">Select Group(s)</h4>
                     {availableGroups.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {availableGroups.map((group: string) => (
+                      <div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {availableGroups.map((group: string) => (
+                            <button
+                              key={group}
+                              type="button"
+                              onClick={() => {
+                                const newGroups = selectedGroups.includes(group)
+                                  ? selectedGroups.filter((g) => g !== group)
+                                  : [...selectedGroups, group]
+                                setSelectedGroups(newGroups)
+                                setCampaignData(prev => ({
+                                  ...prev,
+                                  audience: { ...prev.audience, selectedGroups: newGroups }
+                                }))
+                              }}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                                selectedGroups.includes(group)
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:border-green-400'
+                              }`}
+                            >
+                              {group}
+                              {selectedGroups.includes(group) && (
+                                <svg className="w-3 h-3 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        {selectedGroups.length > 0 && (
+                          <p className="text-sm text-green-600">تم اختيار {selectedGroups.length} مجموعة</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <svg className="w-10 h-10 text-green-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                        </svg>
+                        <p className="text-gray-500 text-sm mb-3">لا توجد مجموعات بعد</p>
+                        <p className="text-gray-400 text-xs">أضف مجموعات لجهات الاتصال من صفحة جهات الاتصال أولاً</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ===== SINGLE CONTACT ===== */}
+                {audienceType === 'single' && (
+                  <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 className="font-medium text-gray-700 mb-3">Select Contact</h4>
+
+                    {/* Search Input */}
+                    <div className="relative mb-3">
+                      <input
+                        type="text"
+                        value={singleContactSearch}
+                        onChange={(e) => {
+                          setSingleContactSearch(e.target.value);
+                          searchContacts(e.target.value);
+                        }}
+                        placeholder="ابحث بالاسم أو الإيميل أو الرقم..."
+                        className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                      />
+                      <svg className="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                      </svg>
+                    </div>
+
+                    {/* Search Results */}
+                    {searchLoading && (
+                      <div className="text-center py-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-500 mx-auto"></div>
+                      </div>
+                    )}
+
+                    {!searchLoading && singleContactResults.length > 0 && !selectedSingleContact && (
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {singleContactResults.map((c: any) => (
                           <button
-                            key={group}
+                            key={c._id}
                             type="button"
                             onClick={() => {
-                              const newGroups = selectedGroups.includes(group)
-                                ? selectedGroups.filter((g) => g !== group)
-                                : [...selectedGroups, group]
-                              setSelectedGroups(newGroups)
+                              setSelectedSingleContact(c);
+                              setSingleContactSearch('');
+                              setSingleContactResults([]);
                               setCampaignData(prev => ({
                                 ...prev,
-                                audience: { ...prev.audience, selectedGroups: newGroups }
-                              }))
+                                audience: { ...prev.audience, audienceType: 'single', singleContactId: c._id }
+                              }));
                             }}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                              selectedGroups.includes(group)
-                                ? 'bg-green-500 text-white'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:border-green-400'
-                            }`}
+                            className="w-full text-right p-2.5 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
                           >
-                            {group}
+                            <div className="font-medium text-gray-700">{c.name || c.firstName || c.email || 'بدون اسم'}</div>
+                            <div className="text-xs text-gray-400">
+                              {c.email && <span>{c.email}</span>}
+                              {c.email && c.phone && <span> | </span>}
+                              {c.phone && <span>{c.phone}</span>}
+                            </div>
                           </button>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm">No groups found. Assign groups to contacts first.</p>
+                    )}
+
+                    {/* Selected Contact */}
+                    {selectedSingleContact && (
+                      <div className="p-3 rounded-lg border-2 border-purple-400 bg-purple-100 flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-700">{selectedSingleContact.name || selectedSingleContact.firstName || selectedSingleContact.email}</div>
+                          <div className="text-xs text-gray-500">
+                            {selectedSingleContact.email}
+                            {selectedSingleContact.phone && ` | ${selectedSingleContact.phone}`}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSingleContact(null);
+                            setSingleContactSearch('');
+                          }}
+                          className="text-purple-400 hover:text-red-400 transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {!selectedSingleContact && singleContactResults.length === 0 && singleContactSearch.length === 0 && (
+                      <p className="text-gray-400 text-xs text-center">اكتب اسم أو إيميل جهة الاتصال للبحث</p>
                     )}
                   </div>
                 )}
