@@ -17,15 +17,16 @@ import { campaignsAPI, emailAccountsAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import SequenceFlowBuilder from "@/components/SequenceBuilder/SequenceFlowBuilder"
 import type { SequenceGraph } from "@/components/SequenceBuilder/SequenceFlowBuilder"
+import { translations } from "../../../src/translations"
 
 const steps = [
-  { name: "Template", nameAr: "قالب" },
-  { name: "Details", nameAr: "التفاصيل" },
-  { name: "Audience", nameAr: "الجمهور" },
-  { name: "Sequence", nameAr: "التسلسل" },
-  { name: "Emails", nameAr: "الرسائل" },
-  { name: "Settings", nameAr: "الإعدادات" },
-  { name: "Review", nameAr: "المراجعة" },
+  { nameKey: "stepTemplate" },
+  { nameKey: "stepDetails" },
+  { nameKey: "stepAudience" },
+  { nameKey: "stepSequence" },
+  { nameKey: "stepEmails" },
+  { nameKey: "stepSettings" },
+  { nameKey: "stepReview" },
 ]
 
 export default function CreateCampaignPage() {
@@ -39,6 +40,28 @@ export default function CreateCampaignPage() {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
+
+  // Language state
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+  const [language, setLanguage] = useState<'ar' | 'en'>((urlParams.get('lang') as 'ar' | 'en') || (typeof window !== 'undefined' ? localStorage.getItem('triggerio_language') as 'ar' | 'en' : null) || 'ar')
+
+  useEffect(() => {
+    document.dir = language === 'ar' ? 'rtl' : 'ltr'
+    document.documentElement.lang = language
+  }, [language])
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'LANGUAGE_CHANGE') {
+        setLanguage(event.data.language)
+        localStorage.setItem('triggerio_language', event.data.language)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  const t = translations[language]
 
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
@@ -195,11 +218,11 @@ export default function CreateCampaignPage() {
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-1 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
-            <span>{template.emails} emails</span>
+            <span>{template.emails} {t.emails}</span>
           </div>
           <div className="flex items-center gap-1 text-sm text-gray-600">
             <Clock className="w-4 h-4" />
-            <span>{template.days} days</span>
+            <span>{template.days} {t.days}</span>
           </div>
         </div>
 
@@ -239,13 +262,13 @@ export default function CreateCampaignPage() {
               setShowPreview(true)
             }}
           >
-            Preview
+            {t.preview}
           </Button>
           <Button
             className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
             onClick={() => handleTemplateSelect(template)}
           >
-            Use Template
+            {t.useTemplate}
           </Button>
         </div>
       </CardContent>
@@ -395,21 +418,21 @@ export default function CreateCampaignPage() {
 
       if (savedCampaignId) {
         await campaignsAPI.update(savedCampaignId, payload)
-        setStatusMessage({ type: "success", text: "Draft updated successfully!" })
-        toast({ title: "Campaign saved as draft" })
+        setStatusMessage({ type: "success", text: t.savedSuccess })
+        toast({ title: t.saveDraft })
         sessionStorage.removeItem('triggerio_campaign_draft')
         return savedCampaignId
       } else {
         const result = await campaignsAPI.create(payload)
         const newId = result.data?._id || result.campaign?._id
         setSavedCampaignId(newId)
-        setStatusMessage({ type: "success", text: "Draft saved successfully!" })
-        toast({ title: "Campaign saved as draft" })
+        setStatusMessage({ type: "success", text: t.savedSuccess })
+        toast({ title: t.saveDraft })
         sessionStorage.removeItem('triggerio_campaign_draft')
         return newId
       }
     } catch (err: any) {
-      setStatusMessage({ type: "error", text: err.message || "Failed to save draft" })
+      setStatusMessage({ type: "error", text: err.message || t.errorSaving })
       return null
     } finally {
       setSaving(false)
@@ -435,12 +458,12 @@ export default function CreateCampaignPage() {
         throw new Error("Failed to save campaign before launching")
       }
       await campaignsAPI.launch(campaignId)
-      setStatusMessage({ type: "success", text: "Campaign launched successfully!" })
-      toast({ title: "Campaign launched!" })
+      setStatusMessage({ type: "success", text: t.savedSuccess })
+      toast({ title: t.launch })
       sessionStorage.removeItem('triggerio_campaign_draft')
       setShowLaunchSuccess(true)
     } catch (err: any) {
-      setStatusMessage({ type: "error", text: err.message || "Failed to launch campaign" })
+      setStatusMessage({ type: "error", text: err.message || t.errorSaving })
     } finally {
       setLaunching(false)
     }
@@ -550,10 +573,10 @@ export default function CreateCampaignPage() {
     }
     try {
       await emailAccountsAPI.sendTest(selectedEmailAccount)
-      setStatusMessage({ type: "success", text: "Test email sent! Check your inbox." })
+      setStatusMessage({ type: "success", text: t.savedSuccess })
       setTimeout(() => setStatusMessage(null), 4000)
     } catch (err: any) {
-      setStatusMessage({ type: "error", text: err.message || "Failed to send test email" })
+      setStatusMessage({ type: "error", text: err.message || t.errorSaving })
     }
   }
 
@@ -574,7 +597,7 @@ export default function CreateCampaignPage() {
   }, [audienceType, selectedGroups, selectedCsvListId, selectedSingleContact, campaignData.audience?.temperature, campaignData.audience?.sources])
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6]" dir="rtl">
+    <div className="min-h-screen bg-[#F3F4F6]" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -585,8 +608,7 @@ export default function CreateCampaignPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Create New Campaign</h1>
-              <p className="text-sm text-gray-600">إنشاء حملة جديدة</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
             </div>
           </div>
 
@@ -617,7 +639,7 @@ export default function CreateCampaignPage() {
                   <div
                     className={`text-xs mt-2 font-medium ${index === currentStep ? "text-[#7C3AED]" : "text-gray-500"}`}
                   >
-                    {step.name}
+                    {t[step.nameKey as keyof typeof t]}
                   </div>
                 </div>
 
@@ -637,8 +659,7 @@ export default function CreateCampaignPage() {
         {currentStep === 0 && (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Start with a proven template</h2>
-              <p className="text-gray-600">ابدأ بقالب مجرب</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">{t.startWithTemplate}</h2>
             </div>
 
             {/* Tabs */}
@@ -648,28 +669,28 @@ export default function CreateCampaignPage() {
                 onClick={() => setActiveTab("popular")}
                 className={activeTab === "popular" ? "bg-[#7C3AED]" : ""}
               >
-                Popular
+                {t.popular}
               </Button>
               <Button
                 variant={activeTab === "goal" ? "default" : "outline"}
                 onClick={() => setActiveTab("goal")}
                 className={activeTab === "goal" ? "bg-[#7C3AED]" : ""}
               >
-                By Goal
+                {t.byGoal}
               </Button>
               <Button
                 variant={activeTab === "industry" ? "default" : "outline"}
                 onClick={() => setActiveTab("industry")}
                 className={activeTab === "industry" ? "bg-[#7C3AED]" : ""}
               >
-                By Industry
+                {t.byIndustry}
               </Button>
               <Button
                 variant={activeTab === "blank" ? "default" : "outline"}
                 onClick={() => setActiveTab("blank")}
                 className={activeTab === "blank" ? "bg-[#7C3AED]" : ""}
               >
-                Blank
+                {t.blank}
               </Button>
             </div>
 
@@ -687,7 +708,7 @@ export default function CreateCampaignPage() {
                     <h3 className="text-lg font-semibold mb-4">{group.goal}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {group.templates.map((id) => {
-                        const template = popularTemplates.find(t => t.id === id)
+                        const template = popularTemplates.find(tmpl => tmpl.id === id)
                         if (!template) return null
                         return renderTemplateCard(template)
                       })}
@@ -704,7 +725,7 @@ export default function CreateCampaignPage() {
                     <h3 className="text-lg font-semibold mb-4">{group.industry}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {group.templates.map((id) => {
-                        const template = popularTemplates.find(t => t.id === id)
+                        const template = popularTemplates.find(tmpl => tmpl.id === id)
                         if (!template) return null
                         return renderTemplateCard(template)
                       })}
@@ -724,16 +745,16 @@ export default function CreateCampaignPage() {
                       </svg>
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Start from Scratch</h3>
-                  <p className="text-gray-600 mb-6">Build your own campaign from scratch. Full control over every email.</p>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t.startFromScratch}</h3>
+                  <p className="text-gray-600 mb-6">{t.startFromScratchDesc}</p>
                   <Button
                     className="bg-[#7C3AED] hover:bg-[#6D28D9]"
                     onClick={() => {
-                      const blankTemplate = popularTemplates.find(t => t.id === 13)
+                      const blankTemplate = popularTemplates.find(tmpl => tmpl.id === 13)
                       if (blankTemplate) handleTemplateSelect(blankTemplate)
                     }}
                   >
-                    Create Blank Campaign
+                    {t.createBlankCampaign}
                   </Button>
                 </CardContent>
               </Card>
@@ -747,10 +768,10 @@ export default function CreateCampaignPage() {
             <Card>
               <CardContent className="p-8 space-y-6">
                 <div>
-                  <Label htmlFor="name">Campaign Name *</Label>
+                  <Label htmlFor="name">{t.campaignName} *</Label>
                   <Input
                     id="name"
-                    placeholder="e.g., Tech Startups Q4 Outreach"
+                    placeholder={t.campaignNamePlaceholder}
                     value={campaignData.name}
                     onChange={(e) => setCampaignData({ ...campaignData, name: e.target.value })}
                     className="mt-2"
@@ -758,34 +779,34 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="goal">Goal</Label>
+                  <Label htmlFor="goal">{t.campaignGoal}</Label>
                   <Select
                     value={campaignData.goal}
                     onValueChange={(value) => setCampaignData({ ...campaignData, goal: value })}
                   >
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select campaign goal" />
+                      <SelectValue placeholder={t.selectGoal} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="book_meeting">Book Meeting</SelectItem>
-                      <SelectItem value="demo_request">Demo Request</SelectItem>
-                      <SelectItem value="generate_leads">Generate Leads</SelectItem>
-                      <SelectItem value="build_relationship">Build Relationship</SelectItem>
-                      <SelectItem value="re_engage">Re-engage Cold Leads</SelectItem>
-                      <SelectItem value="get_feedback">Get Feedback</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="book_meeting">{t.bookMeeting}</SelectItem>
+                      <SelectItem value="demo_request">{t.demoRequest}</SelectItem>
+                      <SelectItem value="generate_leads">{t.generateLeads}</SelectItem>
+                      <SelectItem value="build_relationship">{t.buildRelationship}</SelectItem>
+                      <SelectItem value="re_engage">{t.reEngage}</SelectItem>
+                      <SelectItem value="get_feedback">{t.getFeedback}</SelectItem>
+                      <SelectItem value="other">{t.other}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label htmlFor="industry">Industry</Label>
+                  <Label htmlFor="industry">{t.industry}</Label>
                   <Select
                     value={campaignData.industry}
                     onValueChange={(value) => setCampaignData({ ...campaignData, industry: value })}
                   >
                     <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select industry" />
+                      <SelectValue placeholder={t.selectIndustry} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="saas">SaaS / Technology</SelectItem>
@@ -797,16 +818,16 @@ export default function CreateCampaignPage() {
                       <SelectItem value="healthcare">Healthcare</SelectItem>
                       <SelectItem value="education">Education</SelectItem>
                       <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="other">{t.other}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Label htmlFor="description">{t.campaignDescription}</Label>
                   <Textarea
                     id="description"
-                    placeholder="Brief description of your campaign goals and target audience..."
+                    placeholder={t.campaignDescriptionPlaceholder}
                     value={campaignData.description}
                     onChange={(e) => setCampaignData({ ...campaignData, description: e.target.value })}
                     className="mt-2 min-h-[80px]"
@@ -814,18 +835,18 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="tags">Tags</Label>
+                  <Label htmlFor="tags">{t.tags}</Label>
                   <Input
                     id="tags"
-                    placeholder="e.g., Q4, Tech, High-Value"
+                    placeholder={t.tagsPlaceholder}
                     className="mt-2"
                     value={campaignData.tags.join(", ")}
                     onChange={(e) => setCampaignData(prev => ({
                       ...prev,
-                      tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean)
+                      tags: e.target.value.split(",").map(tag => tag.trim()).filter(Boolean)
                     }))}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Press Enter to add tags</p>
+                  <p className="text-xs text-gray-500 mt-1">{t.tagsHint}</p>
                 </div>
               </CardContent>
             </Card>
@@ -840,14 +861,14 @@ export default function CreateCampaignPage() {
 
                 {/* ===== AUDIENCE TYPE SELECTOR ===== */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Who will receive this campaign?</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">{t.whoReceives}</h3>
                   <div className="space-y-2">
                     {[
-                      { value: 'all', label: 'All Contacts', desc: 'Send to everyone in your contact list' },
-                      { value: 'csv', label: 'Specific CSV List', desc: 'Send to contacts from a specific CSV import' },
-                      { value: 'groups', label: 'Specific Group(s)', desc: 'Send to contacts in selected groups' },
-                      { value: 'filter', label: 'Custom Filter', desc: 'Filter by temperature, source, tags, etc.' },
-                      { value: 'single', label: 'Single Contact', desc: 'Send to one specific contact' },
+                      { value: 'all', label: t.allContacts, desc: t.allContactsDesc },
+                      { value: 'csv', label: t.specificCSV, desc: t.specificCSVDesc },
+                      { value: 'groups', label: t.specificGroups, desc: t.specificGroupsDesc },
+                      { value: 'filter', label: t.customFilter, desc: t.customFilterDesc },
+                      { value: 'single', label: t.singleContact, desc: t.singleContactDesc },
                     ].map((option) => (
                       <label
                         key={option.value}
@@ -883,7 +904,7 @@ export default function CreateCampaignPage() {
                 {/* ===== CSV LIST SELECTOR ===== */}
                 {audienceType === 'csv' && (
                   <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-gray-700 mb-3">Select CSV List</h4>
+                    <h4 className="font-medium text-gray-700 mb-3">{t.selectCSVList}</h4>
                     {availableCsvLists.length > 0 ? (
                       <div className="space-y-2">
                         {availableCsvLists.map((list: any) => (
@@ -912,7 +933,7 @@ export default function CreateCampaignPage() {
                               />
                               <span className="font-medium text-gray-700">{list.csvListId}</span>
                             </div>
-                            <span className="text-sm text-gray-500">{list.count} contacts</span>
+                            <span className="text-sm text-gray-500">{list.count} {t.contacts}</span>
                           </label>
                         ))}
                       </div>
@@ -921,8 +942,8 @@ export default function CreateCampaignPage() {
                         <svg className="w-10 h-10 text-blue-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
-                        <p className="text-gray-500 text-sm mb-3">لا توجد قوائم CSV بعد</p>
-                        <p className="text-gray-400 text-xs mb-4">ارفع ملف CSV من صفحة جهات الاتصال أولاً</p>
+                        <p className="text-gray-500 text-sm mb-3">{t.noCSVLists}</p>
+                        <p className="text-gray-400 text-xs mb-4">{t.noCSVListsHint}</p>
                         <button
                           type="button"
                           onClick={() => window.open('/contacts?action=import', '_blank')}
@@ -932,7 +953,7 @@ export default function CreateCampaignPage() {
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
-                            رفع ملف CSV
+                            {t.uploadCSV}
                           </span>
                         </button>
                       </div>
@@ -943,7 +964,7 @@ export default function CreateCampaignPage() {
                 {/* ===== GROUPS SELECTOR ===== */}
                 {audienceType === 'groups' && (
                   <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-gray-700 mb-3">Select Group(s)</h4>
+                    <h4 className="font-medium text-gray-700 mb-3">{t.selectGroups}</h4>
                     {availableGroups.length > 0 ? (
                       <div>
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -977,7 +998,7 @@ export default function CreateCampaignPage() {
                           ))}
                         </div>
                         {selectedGroups.length > 0 && (
-                          <p className="text-sm text-green-600">تم اختيار {selectedGroups.length} مجموعة</p>
+                          <p className="text-sm text-green-600">{selectedGroups.length} {t.groupsSelected}</p>
                         )}
                       </div>
                     ) : (
@@ -985,8 +1006,8 @@ export default function CreateCampaignPage() {
                         <svg className="w-10 h-10 text-green-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                         </svg>
-                        <p className="text-gray-500 text-sm mb-3">لا توجد مجموعات بعد</p>
-                        <p className="text-gray-400 text-xs">أضف مجموعات لجهات الاتصال من صفحة جهات الاتصال أولاً</p>
+                        <p className="text-gray-500 text-sm mb-3">{t.noGroups}</p>
+                        <p className="text-gray-400 text-xs">{t.noGroupsHint}</p>
                       </div>
                     )}
                   </div>
@@ -995,7 +1016,7 @@ export default function CreateCampaignPage() {
                 {/* ===== SINGLE CONTACT ===== */}
                 {audienceType === 'single' && (
                   <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-medium text-gray-700 mb-3">Select Contact</h4>
+                    <h4 className="font-medium text-gray-700 mb-3">{t.selectContact}</h4>
 
                     {/* Search Input */}
                     <div className="relative mb-3">
@@ -1006,7 +1027,7 @@ export default function CreateCampaignPage() {
                           setSingleContactSearch(e.target.value);
                           searchContacts(e.target.value);
                         }}
-                        placeholder="ابحث بالاسم أو الإيميل أو الرقم..."
+                        placeholder={t.searchContact}
                         className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
                       />
                       <svg className="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -1038,7 +1059,7 @@ export default function CreateCampaignPage() {
                             }}
                             className="w-full text-right p-2.5 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
                           >
-                            <div className="font-medium text-gray-700">{c.name || c.firstName || c.email || 'بدون اسم'}</div>
+                            <div className="font-medium text-gray-700">{c.name || c.firstName || c.email || t.noName}</div>
                             <div className="text-xs text-gray-400">
                               {c.email && <span>{c.email}</span>}
                               {c.email && c.phone && <span> | </span>}
@@ -1075,7 +1096,7 @@ export default function CreateCampaignPage() {
                     )}
 
                     {!selectedSingleContact && singleContactResults.length === 0 && singleContactSearch.length === 0 && (
-                      <p className="text-gray-400 text-xs text-center">اكتب اسم أو إيميل جهة الاتصال للبحث</p>
+                      <p className="text-gray-400 text-xs text-center">{t.typeToSearch}</p>
                     )}
                   </div>
                 )}
@@ -1084,13 +1105,13 @@ export default function CreateCampaignPage() {
                 {audienceType === 'filter' && (
                   <div className="mb-6 space-y-6">
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">1. Temperature Targeting</Label>
+                      <Label className="text-lg font-semibold mb-4 block">{t.temperatureTargeting}</Label>
                       <div className="space-y-3">
                         {[
-                          { value: "cold", label: "Cold (Never contacted)" },
-                          { value: "warm", label: "Warm (Opened/Clicked before)" },
-                          { value: "hot", label: "Hot (Replied before)" },
-                          { value: "frozen", label: "Frozen (No activity 30+ days)" },
+                          { value: "cold", label: t.cold },
+                          { value: "warm", label: t.warm },
+                          { value: "hot", label: t.hot },
+                          { value: "frozen", label: t.frozen },
                         ].map((temp) => (
                           <div key={temp.value} className="flex items-center gap-2">
                             <Checkbox
@@ -1103,7 +1124,7 @@ export default function CreateCampaignPage() {
                                     ...prev.audience,
                                     temperature: checked
                                       ? [...prev.audience.temperature, temp.value]
-                                      : prev.audience.temperature.filter(t => t !== temp.value)
+                                      : prev.audience.temperature.filter(tp => tp !== temp.value)
                                   }
                                 }))
                               }}
@@ -1117,7 +1138,7 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">2. Source Filters</Label>
+                      <Label className="text-lg font-semibold mb-4 block">{t.sourceFilters}</Label>
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { value: "csv", label: "CSV Import" },
@@ -1153,10 +1174,10 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">3. Advanced Filters</Label>
+                      <Label className="text-lg font-semibold mb-4 block">{t.advancedFilters}</Label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="filter-industry">Industry</Label>
+                          <Label htmlFor="filter-industry">{t.industry}</Label>
                           <Input
                             id="filter-industry"
                             placeholder="Technology"
@@ -1169,7 +1190,7 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-location">Location</Label>
+                          <Label htmlFor="filter-location">{t.location}</Label>
                           <Input
                             id="filter-location"
                             placeholder="Dubai, UAE"
@@ -1182,7 +1203,7 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-tags">Tags</Label>
+                          <Label htmlFor="filter-tags">{t.tags}</Label>
                           <Input
                             id="filter-tags"
                             placeholder="VIP, Interested"
@@ -1195,7 +1216,7 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-groups">Groups</Label>
+                          <Label htmlFor="filter-groups">{t.groups}</Label>
                           <Input
                             id="filter-groups"
                             placeholder="Q4 Leads"
@@ -1224,7 +1245,7 @@ export default function CreateCampaignPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
                       <span className="font-semibold text-gray-700">
-                        {audienceLoading ? 'Counting...' : `${audienceCount !== null ? audienceCount.toLocaleString() : '—'} contacts will receive this campaign`}
+                        {audienceLoading ? t.counting : `${audienceCount !== null ? audienceCount.toLocaleString() : '—'} ${t.contactsWillReceive}`}
                       </span>
                     </div>
                     <button
@@ -1233,13 +1254,13 @@ export default function CreateCampaignPage() {
                       disabled={audienceLoading}
                       className="text-sm text-purple-500 hover:text-purple-700 font-medium"
                     >
-                      {audienceLoading ? '...' : 'Refresh'}
+                      {audienceLoading ? '...' : t.refresh}
                     </button>
                   </div>
 
                   {audienceCount !== null && audienceCount > 0 && audienceBreakdown?.byTemperature && Object.keys(audienceBreakdown.byTemperature).length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 mb-2">Breakdown by temperature:</div>
+                      <div className="text-xs text-gray-500 mb-2">{t.breakdownByTemp}</div>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(audienceBreakdown.byTemperature).map(([temp, count]: [string, any]) => (
                           <span key={temp} className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1258,7 +1279,7 @@ export default function CreateCampaignPage() {
 
                 {/* ===== EXCLUSIONS (always visible) ===== */}
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">Exclusions</Label>
+                  <Label className="text-lg font-semibold mb-4 block">{t.exclusions}</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -1270,7 +1291,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="exclude-unsubscribed" className="font-normal">
-                        Exclude unsubscribed
+                        {t.excludeUnsubscribed}
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1283,7 +1304,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="exclude-bounced" className="font-normal">
-                        Exclude bounced emails
+                        {t.excludeBounced}
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1296,7 +1317,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="exclude-replied" className="font-normal">
-                        Exclude contacts who already replied
+                        {t.excludeReplied}
                       </Label>
                     </div>
                   </div>
@@ -1313,8 +1334,8 @@ export default function CreateCampaignPage() {
             <Card>
               <CardContent className="p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold mb-2">Email Sequence</h3>
-                  <p className="text-gray-600">Pre-filled from template (editable)</p>
+                  <h3 className="text-xl font-bold mb-2">{t.emailSequence}</h3>
+                  <p className="text-gray-600">{t.preFilledFromTemplate}</p>
                 </div>
 
                 {/* Toggle: Linear vs Smart Sequence */}
@@ -1327,7 +1348,7 @@ export default function CreateCampaignPage() {
                     }`}
                     onClick={() => setSequenceType("linear")}
                   >
-                    <List className="w-4 h-4 inline mr-1" /> Linear Sequence
+                    <List className="w-4 h-4 inline mr-1" /> {t.linearSequence}
                   </button>
                   <button
                     className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
@@ -1337,7 +1358,7 @@ export default function CreateCampaignPage() {
                     }`}
                     onClick={() => setSequenceType("graph")}
                   >
-                    <GitBranch className="w-4 h-4 inline mr-1" /> Smart Sequence (with Conditions)
+                    <GitBranch className="w-4 h-4 inline mr-1" /> {t.smartSequence}
                   </button>
                 </div>
 
@@ -1381,7 +1402,7 @@ export default function CreateCampaignPage() {
                               -
                             </Button>
                             <span className="text-sm font-medium text-gray-600 min-w-[60px] text-center">
-                              {step.waitDays} {step.waitDays === 1 ? "day" : "days"}
+                              {step.waitDays} {step.waitDays === 1 ? t.days.replace('أيام', 'يوم').replace('days', 'day') : t.days}
                             </span>
                             <Button
                               variant="ghost"
@@ -1411,7 +1432,7 @@ export default function CreateCampaignPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-semibold text-gray-900">
-                                EMAIL {(step.emailIndex ?? 0) + 1}: Day {getCumulativeDay(stepIndex)} - {step.label?.replace(/EMAIL \d+/, '').trim() || (step.emailIndex === 0 ? "INITIAL" : "FOLLOW UP")}
+                                EMAIL {(step.emailIndex ?? 0) + 1}: {t.day} {getCumulativeDay(stepIndex)} - {step.label?.replace(/EMAIL \d+/, '').trim() || (step.emailIndex === 0 ? t.initial : t.followUpLabel)}
                               </h4>
                               <p className="text-sm text-gray-600 mt-1">
                                 {emailEdits[step.emailIndex ?? 0]?.subject || step.subject || "(no subject)"}
@@ -1423,7 +1444,7 @@ export default function CreateCampaignPage() {
                                 size="sm"
                                 onClick={() => setCurrentStep(4)}
                               >
-                                <Pencil className="w-3.5 h-3.5 inline mr-1" /> Edit
+                                <Pencil className="w-3.5 h-3.5 inline mr-1" /> {t.edit}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1431,7 +1452,7 @@ export default function CreateCampaignPage() {
                                 onClick={() => {
                                   const emailCount = sequenceSteps.filter(s => s.type === "email").length
                                   if (emailCount <= 1) {
-                                    setStatusMessage({ type: "error", text: "يجب إبقاء إيميل واحد على الأقل" })
+                                    setStatusMessage({ type: "error", text: language === 'ar' ? "يجب إبقاء إيميل واحد على الأقل" : "At least one email step must remain" })
                                     setTimeout(() => setStatusMessage(null), 3000)
                                     return
                                   }
@@ -1457,7 +1478,7 @@ export default function CreateCampaignPage() {
                                   }
                                 }}
                               >
-                                <Trash2 className="w-3.5 h-3.5 inline mr-1" /> Delete
+                                <Trash2 className="w-3.5 h-3.5 inline mr-1" /> {t.delete}
                               </Button>
                             </div>
                           </div>
@@ -1484,7 +1505,7 @@ export default function CreateCampaignPage() {
                       toast({ title: "Email step added" })
                     }}
                   >
-                    + Add Email Step
+                    {t.addEmailStep}
                   </Button>
                   <Button
                     variant="outline"
@@ -1493,7 +1514,7 @@ export default function CreateCampaignPage() {
                       setSequenceSteps(prev => [...prev, { type: "wait", waitDays: 1 }])
                     }}
                   >
-                    + Add Wait Time
+                    {t.addWaitTime}
                   </Button>
                 </div>
 
@@ -1501,7 +1522,7 @@ export default function CreateCampaignPage() {
                 )}
 
                 <div className="mt-8 space-y-3">
-                  <Label className="font-semibold">Settings:</Label>
+                  <Label className="font-semibold">{t.sequenceSettings}</Label>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="stop-reply"
@@ -1512,7 +1533,7 @@ export default function CreateCampaignPage() {
                       }))}
                     />
                     <Label htmlFor="stop-reply" className="font-normal">
-                      Stop sequence on reply
+                      {t.stopOnReply}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1525,7 +1546,7 @@ export default function CreateCampaignPage() {
                       }))}
                     />
                     <Label htmlFor="stop-unsubscribe" className="font-normal">
-                      Stop sequence on unsubscribe
+                      {t.stopOnUnsubscribe}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1538,7 +1559,7 @@ export default function CreateCampaignPage() {
                       }))}
                     />
                     <Label htmlFor="continue-bounce" className="font-normal">
-                      Continue if email bounces (not recommended)
+                      {t.continueOnBounce}
                     </Label>
                   </div>
                 </div>
@@ -1557,15 +1578,15 @@ export default function CreateCampaignPage() {
                   <CardContent className="p-8 space-y-6">
                     <div>
                       <h3 className="text-xl font-bold mb-2">
-                        Email {index + 1}: {templateEmail?.type?.replace("_", " ") || "Email"} (Day {templateEmail?.day ?? index})
+                        Email {index + 1}: {templateEmail?.type?.replace("_", " ") || "Email"} ({t.day} {templateEmail?.day ?? index})
                       </h3>
                     </div>
 
                     <div>
-                      <Label htmlFor={`subject-${index}`}>Subject Line *</Label>
+                      <Label htmlFor={`subject-${index}`}>{t.subjectLine}</Label>
                       <Input
                         id={`subject-${index}`}
-                        placeholder={templateEmail?.subject || "Enter subject line..."}
+                        placeholder={templateEmail?.subject || t.subjectPlaceholder}
                         className="mt-2"
                         value={edit.subject}
                         onChange={(e) => {
@@ -1576,7 +1597,7 @@ export default function CreateCampaignPage() {
                       />
                       {index === 0 && (
                         <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm font-semibold text-blue-900 mb-2">AI Suggestions:</p>
+                          <p className="text-sm font-semibold text-blue-900 mb-2">{t.aiSuggestions}</p>
                           <ul className="text-sm text-blue-800 space-y-1">
                             <li>- Quick question about {"{company}"}</li>
                             <li>- {"{firstName}"}, impressive work on {"{achievement}"}</li>
@@ -1587,7 +1608,7 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor={`body-${index}`}>Email Body *</Label>
+                      <Label htmlFor={`body-${index}`}>{t.emailBodyLabel}</Label>
                       <Textarea
                         id={`body-${index}`}
                         className="mt-2 font-mono text-sm"
@@ -1602,7 +1623,7 @@ export default function CreateCampaignPage() {
                       />
                       <div className="mt-3 text-xs text-gray-500">
                         <p className="mb-2">
-                          <strong>Variables Available:</strong> <span className="text-gray-400">(click to insert)</span>
+                          <strong>{t.variablesAvailable}</strong> <span className="text-gray-400">{t.clickToInsert}</span>
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {["{{firstName}}", "{{lastName}}", "{{company}}", "{{industry}}", "{{location}}", "{{achievement}}", "{{pain_point}}", "{{specific_detail}}", "{{yourName}}", "{{yourTitle}}"].map((variable) => (
@@ -1611,10 +1632,10 @@ export default function CreateCampaignPage() {
                               type="button"
                               className="text-xs px-2 py-1 bg-gray-100 hover:bg-purple-50 hover:text-purple-600 rounded transition-colors cursor-pointer"
                               onClick={() => {
-                                setEmailEdits(prev => prev.map((edit, i) =>
+                                setEmailEdits(prev => prev.map((ed, i) =>
                                   i === index
-                                    ? { ...edit, body: edit.body + " " + variable }
-                                    : edit
+                                    ? { ...ed, body: ed.body + " " + variable }
+                                    : ed
                                 ))
                               }}
                             >
@@ -1626,7 +1647,7 @@ export default function CreateCampaignPage() {
                     </div>
 
                     {!edit.subject.trim() || !edit.body.trim() ? (
-                      <p className="text-sm text-red-500">Please fill in both subject and body for this email.</p>
+                      <p className="text-sm text-red-500">{t.fillSubjectAndBody}</p>
                     ) : null}
                   </CardContent>
                 </Card>
@@ -1641,12 +1662,11 @@ export default function CreateCampaignPage() {
             {/* Email Account Selection */}
             <Card>
               <CardContent className="p-8 space-y-4">
-                <Label className="text-lg font-semibold mb-4 block">Email Account</Label>
-                <p className="text-sm text-gray-600 mb-2">اختر حساب البريد الذي سيُرسل منه الحملة</p>
+                <Label className="text-lg font-semibold mb-4 block">{t.emailAccount}</Label>
                 {emailAccounts.length > 0 ? (
                   <Select value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select email account" />
+                      <SelectValue placeholder={t.selectEmailAccount} />
                     </SelectTrigger>
                     <SelectContent>
                       {emailAccounts.map((account: any) => (
@@ -1659,7 +1679,7 @@ export default function CreateCampaignPage() {
                 ) : (
                   <Card className="bg-yellow-50 border-yellow-200">
                     <CardContent className="p-4 text-sm text-yellow-900">
-                      No email accounts connected. Please connect a Gmail account from Settings first.
+                      {t.noEmailAccounts}
                     </CardContent>
                   </Card>
                 )}
@@ -1669,7 +1689,7 @@ export default function CreateCampaignPage() {
             <Card>
               <CardContent className="p-8 space-y-8">
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">1. Send Schedule</Label>
+                  <Label className="text-lg font-semibold mb-4 block">{t.sendSchedule}</Label>
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
@@ -1684,7 +1704,7 @@ export default function CreateCampaignPage() {
                           }))}
                         />
                         <Label htmlFor="best-time" className="font-normal">
-                          Best time (AI optimized)
+                          {t.bestTime}
                         </Label>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1699,7 +1719,7 @@ export default function CreateCampaignPage() {
                           }))}
                         />
                         <Label htmlFor="specific-time" className="font-normal">
-                          Specific time
+                          {t.specificTime}
                         </Label>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1714,13 +1734,13 @@ export default function CreateCampaignPage() {
                           }))}
                         />
                         <Label htmlFor="random-time" className="font-normal">
-                          Random time during business hours
+                          {t.randomTime}
                         </Label>
                       </div>
                     </div>
 
                     <div>
-                      <Label className="block mb-2">Days:</Label>
+                      <Label className="block mb-2">{t.sendDays}</Label>
                       <div className="flex gap-2">
                         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
                           const dayKey = day.toLowerCase()
@@ -1748,20 +1768,20 @@ export default function CreateCampaignPage() {
                     <Card className="bg-blue-50 border-blue-200">
                       <CardContent className="p-3 text-sm text-blue-900">
                         {campaignData.sendSchedule.sendTime === "best"
-                          ? "AI will optimize send times for best results"
+                          ? t.aiWillOptimize
                           : campaignData.sendSchedule.days.some(d => ["sat", "sun"].includes(d))
-                            ? "Weekend sending may have lower open rates"
-                            : "Sending emails during business hours on weekdays typically yields higher open rates"}
+                            ? t.weekendWarning
+                            : t.weekdayTip}
                       </CardContent>
                     </Card>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">2. Send Limits (Deliverability Protection)</Label>
+                  <Label className="text-lg font-semibold mb-4 block">{t.sendLimits}</Label>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="daily-limit">Daily send limit:</Label>
+                      <Label htmlFor="daily-limit">{t.dailyLimit}</Label>
                       <Select
                         value={String(campaignData.sendSchedule.dailyLimit)}
                         onValueChange={(val) => setCampaignData(prev => ({
@@ -1773,18 +1793,18 @@ export default function CreateCampaignPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="20">20 emails per day</SelectItem>
-                          <SelectItem value="30">30 emails per day</SelectItem>
-                          <SelectItem value="50">50 emails per day</SelectItem>
-                          <SelectItem value="100">100 emails per day</SelectItem>
+                          <SelectItem value="20">20 {t.emailsPerDay}</SelectItem>
+                          <SelectItem value="30">30 {t.emailsPerDay}</SelectItem>
+                          <SelectItem value="50">50 {t.emailsPerDay}</SelectItem>
+                          <SelectItem value="100">100 {t.emailsPerDay}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <Card className="bg-orange-50 border-orange-200">
                       <CardContent className="p-3 text-sm text-orange-900">
-                        <p className="mb-1">Domain health will be checked before first send</p>
-                        <p>Recommended limit: 30-50 emails/day</p>
+                        <p className="mb-1">{t.domainHealthCheck}</p>
+                        <p>{t.recommendedLimit}</p>
                       </CardContent>
                     </Card>
 
@@ -1799,15 +1819,15 @@ export default function CreateCampaignPage() {
                       />
                       <Label htmlFor="warmup" className="font-normal">
                         {campaignData.sendSchedule.warmup
-                          ? "Warmup enabled: gradually increases daily volume"
-                          : "Warmup disabled: sending at full volume from day 1"}
+                          ? t.warmupEnabled
+                          : t.warmupDisabled}
                       </Label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">3. Tracking</Label>
+                  <Label className="text-lg font-semibold mb-4 block">{t.tracking}</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -1819,7 +1839,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="track-opens" className="font-normal">
-                        Track email opens
+                        {t.trackOpens}
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1832,7 +1852,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="track-clicks" className="font-normal">
-                        Track link clicks
+                        {t.trackClicks}
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1845,7 +1865,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="track-replies" className="font-normal">
-                        Track replies
+                        {t.trackReplies}
                       </Label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1858,7 +1878,7 @@ export default function CreateCampaignPage() {
                         }))}
                       />
                       <Label htmlFor="unsubscribe-link" className="font-normal">
-                        Add unsubscribe link (required by law)
+                        {t.addUnsubscribeLink}
                       </Label>
                     </div>
                   </div>
@@ -1878,26 +1898,26 @@ export default function CreateCampaignPage() {
                     <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </span>
-                    DETAILS
+                    {t.details}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Name:</strong> {campaignData.name || "Untitled Campaign"}
+                      <strong>{t.name}:</strong> {campaignData.name || t.notSet}
                     </p>
                     <p>
-                      <strong>Goal:</strong> {campaignData.goal || "Not set"}
+                      <strong>{t.goal}:</strong> {campaignData.goal || t.notSet}
                     </p>
                     <p>
-                      <strong>Industry:</strong> {campaignData.industry || "Not set"}
+                      <strong>{t.industry}:</strong> {campaignData.industry || t.notSet}
                     </p>
                     <p>
-                      <strong>Description:</strong> {campaignData.description || "No description"}
+                      <strong>{t.description}:</strong> {campaignData.description || t.noDescription}
                     </p>
                     <p>
-                      <strong>Tags:</strong> {campaignData.tags.length > 0 ? campaignData.tags.join(", ") : "None"}
+                      <strong>{t.tags}:</strong> {campaignData.tags.length > 0 ? campaignData.tags.join(", ") : t.noneSelected}
                     </p>
                     <p>
-                      <strong>Template:</strong> {selectedTemplate?.name || "None selected"}
+                      <strong>{t.template}:</strong> {selectedTemplate?.name || t.noneSelected}
                     </p>
                   </div>
                 </CardContent>
@@ -1909,44 +1929,44 @@ export default function CreateCampaignPage() {
                     <span className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </span>
-                    AUDIENCE
+                    {t.audience}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Audience Type:</strong>{" "}
+                      <strong>{t.audienceType}:</strong>{" "}
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                        {audienceType === 'all' ? 'All Contacts' :
-                         audienceType === 'csv' ? 'Specific CSV List' :
-                         audienceType === 'groups' ? 'Specific Group(s)' :
-                         audienceType === 'filter' ? 'Custom Filter' :
-                         audienceType === 'single' ? 'Single Contact' : audienceType}
+                        {audienceType === 'all' ? t.allContactsLabel :
+                         audienceType === 'csv' ? t.csvListLabel :
+                         audienceType === 'groups' ? t.groupsLabel :
+                         audienceType === 'filter' ? t.customFilterLabel :
+                         audienceType === 'single' ? t.singleContactLabel : audienceType}
                       </span>
                     </p>
                     {audienceType === 'csv' && selectedCsvListId && (
-                      <p><strong>CSV List:</strong> {selectedCsvListId}</p>
+                      <p><strong>{t.csvList}:</strong> {selectedCsvListId}</p>
                     )}
                     {audienceType === 'groups' && selectedGroups.length > 0 && (
-                      <p><strong>Groups:</strong> {selectedGroups.join(', ')}</p>
+                      <p><strong>{t.groups}:</strong> {selectedGroups.join(', ')}</p>
                     )}
                     {audienceType === 'filter' && (
                       <>
                         <p>
-                          <strong>Temperature:</strong> {campaignData.audience.temperature.length > 0
-                            ? campaignData.audience.temperature.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
-                            : "None selected"}
+                          <strong>{t.temperature}:</strong> {campaignData.audience.temperature.length > 0
+                            ? campaignData.audience.temperature.map(tp => tp.charAt(0).toUpperCase() + tp.slice(1)).join(", ")
+                            : t.noneSelected}
                         </p>
                         <p>
-                          <strong>Sources:</strong> {campaignData.audience.sources.length > 0
+                          <strong>{t.sources}:</strong> {campaignData.audience.sources.length > 0
                             ? campaignData.audience.sources.map(s => s.toUpperCase()).join(", ")
-                            : "None selected"}
+                            : t.noneSelected}
                         </p>
                       </>
                     )}
                     <p>
-                      <strong>Estimated Contacts:</strong>{" "}
+                      <strong>{t.estimatedContacts}:</strong>{" "}
                       {audienceCount !== null
-                        ? <span className="text-green-600 font-semibold">{audienceCount.toLocaleString()} contacts</span>
-                        : <span className="text-gray-400">Not calculated yet</span>
+                        ? <span className="text-green-600 font-semibold">{audienceCount.toLocaleString()} {t.contacts}</span>
+                        : <span className="text-gray-400">{t.notCalculated}</span>
                       }
                     </p>
                   </div>
@@ -1959,12 +1979,12 @@ export default function CreateCampaignPage() {
                     <span className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </span>
-                    SEQUENCE
+                    {t.sequence}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
                       <strong>
-                        {sequenceSteps.filter(s => s.type === "email").length} emails over {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} days
+                        {sequenceSteps.filter(s => s.type === "email").length} {t.emailsOver} {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} {t.days}
                       </strong>
                     </p>
                     {sequenceSteps.filter(s => s.type === "email").map((step, i) => (
@@ -1982,29 +2002,29 @@ export default function CreateCampaignPage() {
                     <span className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </span>
-                    SETTINGS
+                    {t.settings}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <strong>Send Time:</strong> {campaignData.sendSchedule.sendTime === "best" ? "Best time (AI optimized)" : campaignData.sendSchedule.sendTime === "specific" ? campaignData.sendSchedule.specificTime : "Random time"}
+                      <strong>{t.sendTime}:</strong> {campaignData.sendSchedule.sendTime === "best" ? t.bestTimeLabel : campaignData.sendSchedule.sendTime === "specific" ? campaignData.sendSchedule.specificTime : t.randomTimeLabel}
                     </p>
                     <p>
-                      <strong>Days:</strong> {campaignData.sendSchedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")}
+                      <strong>{t.sendDays}</strong> {campaignData.sendSchedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")}
                     </p>
                     <p>
-                      <strong>Daily Limit:</strong> {campaignData.sendSchedule.dailyLimit} emails/day
+                      <strong>{t.dailyLimitLabel}:</strong> {campaignData.sendSchedule.dailyLimit} {t.emailsPerDay}
                     </p>
                     <p>
-                      <strong>Email Account:</strong> {selectedEmailAccount ? emailAccounts.find((a: any) => a._id === selectedEmailAccount)?.email || "Selected" : "Not selected"}
+                      <strong>{t.emailAccountLabel}:</strong> {selectedEmailAccount ? emailAccounts.find((a: any) => a._id === selectedEmailAccount)?.email || "Selected" : t.notSelectedLabel}
                     </p>
                     <p>
-                      <strong>Stop on Reply:</strong> {campaignData.sequence.stopOnReply ? "Yes" : "No"}
+                      <strong>{t.stopOnReplyLabel}:</strong> {campaignData.sequence.stopOnReply ? t.yes : t.no}
                     </p>
                     <p>
-                      <strong>Track Opens:</strong> {campaignData.tracking.opens ? "Yes" : "No"}
+                      <strong>{t.trackOpensLabel}:</strong> {campaignData.tracking.opens ? t.yes : t.no}
                     </p>
                     <p>
-                      <strong>Track Clicks:</strong> {campaignData.tracking.clicks ? "Yes" : "No"}
+                      <strong>{t.trackClicksLabel}:</strong> {campaignData.tracking.clicks ? t.yes : t.no}
                     </p>
                   </div>
                 </CardContent>
@@ -2013,18 +2033,18 @@ export default function CreateCampaignPage() {
 
             <Card className="bg-purple-50 border-[#7C3AED]">
               <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-4">CAMPAIGN SUMMARY</h3>
+                <h3 className="font-bold text-lg mb-4">{t.campaignSummary}</h3>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <strong>Total emails in sequence:</strong> {sequenceSteps.filter(s => s.type === "email").length}
+                    <strong>{t.totalEmailsInSequence}:</strong> {sequenceSteps.filter(s => s.type === "email").length}
                   </p>
                   <p>
-                    <strong>Daily sending limit:</strong> {campaignData.sendSchedule.dailyLimit}
+                    <strong>{t.dailySendingLimit}:</strong> {campaignData.sendSchedule.dailyLimit}
                   </p>
                   <p>
-                    <strong>Estimated campaign duration:</strong> {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} days
+                    <strong>{t.estimatedDuration}:</strong> {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} {t.days}
                   </p>
-                  <p className="text-gray-500 mt-2">Results will appear after launch</p>
+                  <p className="text-gray-500 mt-2">{t.resultsAfterLaunch}</p>
                 </div>
               </CardContent>
             </Card>
@@ -2041,17 +2061,17 @@ export default function CreateCampaignPage() {
               const passedCount = Object.values(validations).filter(Boolean).length
               const totalCount = Object.keys(validations).length
               const checkItems = [
-                { key: "hasName" as const, label: "Campaign name set" },
-                { key: "hasEmailAccount" as const, label: "Email account connected" },
-                { key: "hasEmails" as const, label: "All emails have subject + body" },
-                { key: "hasAudience" as const, label: "Target audience selected" },
-                { key: "hasSources" as const, label: "Contact sources selected" },
-                { key: "hasDays" as const, label: "Send days configured" },
+                { key: "hasName" as const, label: t.checkName },
+                { key: "hasEmailAccount" as const, label: t.checkEmailAccount },
+                { key: "hasEmails" as const, label: t.checkEmails },
+                { key: "hasAudience" as const, label: t.checkAudience },
+                { key: "hasSources" as const, label: t.checkSources },
+                { key: "hasDays" as const, label: t.checkDays },
               ]
               return (
                 <Card className="border-green-200">
                   <CardContent className="p-6">
-                    <h3 className="font-bold text-lg mb-4">PRE-LAUNCH CHECKLIST ({passedCount}/{totalCount} passed)</h3>
+                    <h3 className="font-bold text-lg mb-4">{t.preLaunchChecklist} ({passedCount}/{totalCount} {t.passed})</h3>
                     <div className="space-y-2 text-sm">
                       {checkItems.map((item) => (
                         <div key={item.key} className="flex items-center gap-2">
@@ -2064,7 +2084,7 @@ export default function CreateCampaignPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-3">Spam score available after first send</p>
+                    <p className="text-xs text-gray-500 mt-3">{t.spamScoreNote}</p>
                   </CardContent>
                 </Card>
               )
@@ -2077,11 +2097,11 @@ export default function CreateCampaignPage() {
       <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
-            ← Back
+            {t.back}
           </Button>
 
           <div className="text-sm text-gray-600">
-            Step {currentStep + 1} of {steps.length}
+            {t.stepOf} {currentStep + 1} {t.of} {steps.length}
           </div>
 
           <div className="flex gap-3 items-center">
@@ -2093,10 +2113,10 @@ export default function CreateCampaignPage() {
             {currentStep === 6 ? (
               <>
                 <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
-                  {saving ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> Saving...</> : "Save as Draft"}
+                  {saving ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> {t.saving}</> : t.saveAsDraft}
                 </Button>
                 <Button variant="outline" onClick={handleSendTestEmail}>
-                  Send Test Email
+                  {t.sendTestEmail}
                 </Button>
                 <Button
                   className="bg-[#7C3AED] hover:bg-[#6D28D9]"
@@ -2110,12 +2130,12 @@ export default function CreateCampaignPage() {
                     campaignData.sendSchedule.days.length > 0
                   )}
                 >
-                  {launching ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> Launching...</> : "Launch Campaign"}
+                  {launching ? <><Loader2 className="w-4 h-4 animate-spin ml-2" /> {t.launching}</> : t.launchCampaign}
                 </Button>
               </>
             ) : (
               <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]" onClick={handleNext}>
-                Next →
+                {t.nextArrow}
               </Button>
             )}
           </div>
@@ -2126,19 +2146,19 @@ export default function CreateCampaignPage() {
       <Dialog open={showLaunchConfirm} onOpenChange={setShowLaunchConfirm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Launch Campaign?</DialogTitle>
+            <DialogTitle>{t.launchCampaignTitle}</DialogTitle>
             <DialogDescription>
-              This will start sending emails to your audience. Make sure all details are correct.
+              {t.launchDesc}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm">
-            <p><strong>Campaign:</strong> {campaignData.name || "Untitled"}</p>
-            <p><strong>Emails:</strong> {sequenceSteps.filter(s => s.type === "email").length} steps</p>
-            <p><strong>Daily limit:</strong> {campaignData.sendSchedule.dailyLimit} emails/day</p>
+            <p><strong>{t.campaign}:</strong> {campaignData.name || t.notSet}</p>
+            <p><strong>{t.emailsLabel}:</strong> {sequenceSteps.filter(s => s.type === "email").length} {t.steps}</p>
+            <p><strong>{t.dailyLimitLabel}:</strong> {campaignData.sendSchedule.dailyLimit} {t.emailsPerDay}</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLaunchConfirm(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               className="bg-[#7C3AED] hover:bg-[#6D28D9]"
@@ -2147,7 +2167,7 @@ export default function CreateCampaignPage() {
                 handleLaunchCampaign()
               }}
             >
-              Confirm Launch
+              {t.confirmLaunch}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2160,13 +2180,13 @@ export default function CreateCampaignPage() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Campaign Launched!</h2>
+            <h2 className="text-2xl font-bold mb-2">{t.campaignLaunched}</h2>
             <p className="text-gray-600 mb-4">
-              Your campaign &quot;{campaignData.name || 'Untitled'}&quot; is now live and sending.
+              {t.campaignLive} &quot;{campaignData.name || t.notSet}&quot; {t.campaignLiveEnd}
             </p>
             <div className="space-y-1 text-sm text-gray-500 mb-6">
-              <p>Daily limit: {campaignData.sendSchedule.dailyLimit} emails/day</p>
-              <p>Sequence: {sequenceSteps.filter(s => s.type === "email").length} emails</p>
+              <p>{t.dailyLimitLabel}: {campaignData.sendSchedule.dailyLimit} {t.emailsPerDay}</p>
+              <p>{t.sequence}: {sequenceSteps.filter(s => s.type === "email").length} {t.emails}</p>
             </div>
           </div>
           <DialogFooter className="flex gap-2 justify-center">
@@ -2174,7 +2194,7 @@ export default function CreateCampaignPage() {
               setShowLaunchSuccess(false)
               window.location.href = "/campaigns"
             }}>
-              View Campaigns
+              {t.viewCampaigns}
             </Button>
             <Button className="bg-[#7C3AED] hover:bg-[#6D28D9]" onClick={() => {
               setShowLaunchSuccess(false)
@@ -2185,7 +2205,7 @@ export default function CreateCampaignPage() {
               setSelectedTemplate(null)
               setSavedCampaignId(null)
             }}>
-              Create Another
+              {t.createAnother}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2203,7 +2223,7 @@ export default function CreateCampaignPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">{previewTemplate.name}</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    {previewTemplate.emails} emails over {previewTemplate.days} days
+                    {previewTemplate.emails} {t.emails} {t.emailsOver} {previewTemplate.days} {t.days}
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
@@ -2216,10 +2236,10 @@ export default function CreateCampaignPage() {
                   <div key={index} className="border-l-4 border-[#7C3AED] pl-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge className="bg-purple-100 text-[#7C3AED]">
-                        Day {step.day} - {step.type.replace("_", " ")}
+                        {t.day} {step.day} - {step.type.replace("_", " ")}
                       </Badge>
                     </div>
-                    <div className="text-sm font-semibold text-gray-700 mb-1">Subject: {step.subject}</div>
+                    <div className="text-sm font-semibold text-gray-700 mb-1">{t.subject}: {step.subject}</div>
                     <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded whitespace-pre-line">
                       {step.body || `Sample email content for ${step.type}...`}
                     </div>
@@ -2229,7 +2249,7 @@ export default function CreateCampaignPage() {
 
               <div className="p-6 border-t flex gap-3">
                 <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowPreview(false)}>
-                  Cancel
+                  {t.cancel}
                 </Button>
                 <Button
                   className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
@@ -2238,7 +2258,7 @@ export default function CreateCampaignPage() {
                     setShowPreview(false)
                   }}
                 >
-                  Use This Template
+                  {t.useThisTemplate}
                 </Button>
               </div>
             </CardContent>
