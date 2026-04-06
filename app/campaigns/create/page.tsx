@@ -47,7 +47,10 @@ export default function CreateCampaignPage() {
 
   useEffect(() => {
     document.dir = language === 'ar' ? 'rtl' : 'ltr'
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'
     document.documentElement.lang = language
+    document.body.dir = language === 'ar' ? 'rtl' : 'ltr'
+    document.body.style.textAlign = language === 'ar' ? 'right' : 'left'
   }, [language])
 
   useEffect(() => {
