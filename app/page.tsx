@@ -9,11 +9,18 @@ export default function Home() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlToken = urlParams.get('token')
+    const urlLang = urlParams.get('lang')
+
     if (urlToken) {
       localStorage.setItem('triggerio_token', urlToken)
-      window.history.replaceState({}, '', window.location.pathname)
     }
-    router.replace("/campaigns/create")
+    if (urlLang === 'ar' || urlLang === 'en') {
+      localStorage.setItem('triggerio_language', urlLang)
+    }
+
+    // Pass lang to the create page so it reads it correctly
+    const lang = urlLang || localStorage.getItem('triggerio_language') || 'ar'
+    router.replace(`/campaigns/create?lang=${lang}`)
   }, [router])
 
   return null
