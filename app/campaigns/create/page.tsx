@@ -32,6 +32,21 @@ const steps = [
 export default function CreateCampaignPage() {
   const { toast } = useToast()
 
+  // Language state - initialized safely for SSR
+  const [language, setLanguage] = useState<'ar' | 'en'>('ar')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlLang = params.get('lang')
+    if (urlLang === 'ar' || urlLang === 'en') {
+      setLanguage(urlLang)
+      localStorage.setItem('triggerio_language', urlLang)
+    } else {
+      const stored = localStorage.getItem('triggerio_language')
+      if (stored === 'ar' || stored === 'en') setLanguage(stored as 'ar' | 'en')
+    }
+  }, [])
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlToken = urlParams.get('token')
@@ -40,10 +55,6 @@ export default function CreateCampaignPage() {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
-
-  // Language state
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
-  const [language, setLanguage] = useState<'ar' | 'en'>((urlParams.get('lang') as 'ar' | 'en') || (typeof window !== 'undefined' ? localStorage.getItem('triggerio_language') as 'ar' | 'en' : null) || 'ar')
 
   useEffect(() => {
     document.dir = language === 'ar' ? 'rtl' : 'ltr'
