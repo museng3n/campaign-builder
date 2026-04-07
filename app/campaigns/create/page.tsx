@@ -42,6 +42,19 @@ export default function CreateCampaignPage() {
     return 'ar'
   })
 
+  // Theme state - initialized synchronously to prevent flash
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const urlTheme = new URLSearchParams(window.location.search).get('theme');
+    if (urlTheme === 'light' || urlTheme === 'dark') return urlTheme as 'light' | 'dark';
+    const stored = localStorage.getItem('triggerio_theme');
+    if (stored === 'light' || stored === 'dark') return stored as 'light' | 'dark';
+    return 'light';
+  });
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
   // Set document direction synchronously before first render
   if (typeof document !== 'undefined') {
     document.dir = language === 'ar' ? 'rtl' : 'ltr'
@@ -71,6 +84,14 @@ export default function CreateCampaignPage() {
       if (event.data?.type === 'LANGUAGE_CHANGE') {
         setLanguage(event.data.language)
         localStorage.setItem('triggerio_language', event.data.language)
+      }
+      if (event.data?.type === 'THEME_CHANGE') {
+        const t = event.data.theme;
+        if (t === 'light' || t === 'dark') {
+          setTheme(t as 'light' | 'dark');
+          localStorage.setItem('triggerio_theme', t);
+          document.documentElement.setAttribute('data-theme', t);
+        }
       }
     }
     window.addEventListener('message', handleMessage)
@@ -215,47 +236,48 @@ export default function CreateCampaignPage() {
   }
 
   const renderTemplateCard = (template: any) => (
-    <Card
+    <div
       key={template.id}
-      className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-[#7C3AED]"
+      className="hover:shadow-lg transition-shadow cursor-pointer rounded-xl border-2 hover:border-[#7C3AED]"
+      style={{ background: colors.cardBg, border: '1px solid ' + colors.border }}
     >
-      <CardContent className="p-6">
+      <div className="p-6">
         {/* Badge */}
         <div className="flex items-center justify-between mb-4">
           <Badge className="bg-purple-100 text-[#7C3AED] hover:bg-purple-100">{template.badge}</Badge>
-          <span className="text-xs text-gray-500">by {template.author}</span>
+          <span className="text-xs" style={{ color: colors.textMuted }}>by {template.author}</span>
         </div>
 
         {/* Template Name */}
-        <h3 className="text-lg font-bold text-gray-900 mb-2">{template.name}</h3>
-        <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+        <h3 className="text-lg font-bold mb-2" style={{ color: colors.heading }}>{template.name}</h3>
+        <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>{template.description}</p>
 
         {/* Sequence Info */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1 text-sm" style={{ color: colors.textSecondary }}>
             <Mail className="w-4 h-4" />
             <span>{template.emails} {t.emails}</span>
           </div>
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1 text-sm" style={{ color: colors.textSecondary }}>
             <Clock className="w-4 h-4" />
             <span>{template.days} {t.days}</span>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-lg" style={{ background: colors.surfaceBg }}>
           <div>
-            <div className="text-xs text-gray-500 mb-1">Open Rate</div>
+            <div className="text-xs mb-1" style={{ color: colors.textMuted }}>Open Rate</div>
             <div className="text-lg font-bold text-[#10B981]">{template.stats.avgOpenRate}%</div>
           </div>
           <div>
-            <div className="text-xs text-gray-500 mb-1">Reply Rate</div>
+            <div className="text-xs mb-1" style={{ color: colors.textMuted }}>Reply Rate</div>
             <div className="text-lg font-bold text-[#7C3AED]">{template.stats.avgReplyRate}%</div>
           </div>
         </div>
 
         {/* Usage */}
-        <div className="text-xs text-gray-500 mb-4">
+        <div className="text-xs mb-4" style={{ color: colors.textMuted }}>
           Used {template.stats.usedCount} times
         </div>
 
@@ -287,8 +309,8 @@ export default function CreateCampaignPage() {
             {t.useTemplate}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 
   // جلب حسابات البريد المتصلة
@@ -612,10 +634,24 @@ export default function CreateCampaignPage() {
     }
   }, [audienceType, selectedGroups, selectedCsvListId, selectedSingleContact, campaignData.audience?.temperature, campaignData.audience?.sources])
 
+  const colors = theme === 'dark' ? {
+    pageBg: '#11111b', cardBg: '#1e1e2e', cardBgHover: '#2a2a3c', surfaceBg: '#313244',
+    text: '#cdd6f4', textSecondary: '#a6adc8', textMuted: '#6c7086', heading: '#cdd6f4',
+    border: '#313244', borderLight: '#45475a',
+    inputBg: '#313244', inputText: '#cdd6f4', inputBorder: '#45475a',
+    tableHeaderBg: '#1e1e2e', tableRowHover: '#2a2a3c',
+  } : {
+    pageBg: '#f9fafb', cardBg: '#ffffff', cardBgHover: '#f9fafb', surfaceBg: '#f3f4f6',
+    text: '#374151', textSecondary: '#6b7280', textMuted: '#9ca3af', heading: '#111827',
+    border: '#e5e7eb', borderLight: '#f3f4f6',
+    inputBg: '#ffffff', inputText: '#374151', inputBorder: '#d1d5db',
+    tableHeaderBg: '#f9fafb', tableRowHover: '#f3f4f6',
+  };
+
   return (
-    <div className="min-h-screen bg-[#F3F4F6]" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen" style={{ background: colors.pageBg, color: colors.text }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="sticky top-0 z-10" style={{ background: colors.cardBg, borderBottom: '1px solid ' + colors.border }}>
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4 mb-6">
             <Link href="/campaigns">
@@ -624,7 +660,7 @@ export default function CreateCampaignPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
+              <h1 className="text-2xl font-bold" style={{ color: colors.heading }}>{t.pageTitle}</h1>
             </div>
           </div>
 
@@ -653,7 +689,8 @@ export default function CreateCampaignPage() {
 
                   {/* Step Label */}
                   <div
-                    className={`text-xs mt-2 font-medium ${index === currentStep ? "text-[#7C3AED]" : "text-gray-500"}`}
+                    className={`text-xs mt-2 font-medium ${index === currentStep ? "text-[#7C3AED]" : ""}`}
+                    style={index !== currentStep ? { color: colors.textSecondary } : {}}
                   >
                     {t[step.nameKey as keyof typeof t]}
                   </div>
@@ -661,7 +698,10 @@ export default function CreateCampaignPage() {
 
                 {/* Connector Line */}
                 {index < steps.length - 1 && (
-                  <div className={`h-0.5 flex-1 mb-6 ${index < currentStep ? "bg-[#7C3AED]" : "bg-gray-300"}`} />
+                  <div
+                    className={`h-0.5 flex-1 mb-6 ${index < currentStep ? "bg-[#7C3AED]" : ""}`}
+                    style={index >= currentStep ? { background: colors.border } : {}}
+                  />
                 )}
               </div>
             ))}
@@ -675,7 +715,7 @@ export default function CreateCampaignPage() {
         {currentStep === 0 && (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">{t.startWithTemplate}</h2>
+              <h2 className="text-3xl font-bold mb-2" style={{ color: colors.heading }}>{t.startWithTemplate}</h2>
             </div>
 
             {/* Tabs */}
@@ -721,7 +761,7 @@ export default function CreateCampaignPage() {
               <div className="space-y-8">
                 {byGoalTemplates.map((group) => (
                   <div key={group.goal}>
-                    <h3 className="text-lg font-semibold mb-4">{group.goal}</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.heading }}>{group.goal}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {group.templates.map((id) => {
                         const template = popularTemplates.find(tmpl => tmpl.id === id)
@@ -738,7 +778,7 @@ export default function CreateCampaignPage() {
               <div className="space-y-8">
                 {byIndustryTemplates.map((group) => (
                   <div key={group.industry}>
-                    <h3 className="text-lg font-semibold mb-4">{group.industry}</h3>
+                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.heading }}>{group.industry}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {group.templates.map((id) => {
                         const template = popularTemplates.find(tmpl => tmpl.id === id)
@@ -752,17 +792,17 @@ export default function CreateCampaignPage() {
             )}
 
             {activeTab === "blank" && (
-              <Card className="max-w-2xl mx-auto">
-                <CardContent className="p-12 text-center">
+              <div className="max-w-2xl mx-auto rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                <div className="p-12 text-center">
                   <div className="mb-6">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: colors.surfaceBg }}>
+                      <svg className="w-10 h-10" style={{ color: colors.textMuted }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{t.startFromScratch}</h3>
-                  <p className="text-gray-600 mb-6">{t.startFromScratchDesc}</p>
+                  <h3 className="text-2xl font-bold mb-2" style={{ color: colors.heading }}>{t.startFromScratch}</h3>
+                  <p className="mb-6" style={{ color: colors.textSecondary }}>{t.startFromScratchDesc}</p>
                   <Button
                     className="bg-[#7C3AED] hover:bg-[#6D28D9]"
                     onClick={() => {
@@ -772,8 +812,8 @@ export default function CreateCampaignPage() {
                   >
                     {t.createBlankCampaign}
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -781,21 +821,22 @@ export default function CreateCampaignPage() {
         {/* Step 2: Campaign Details */}
         {currentStep === 1 && (
           <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardContent className="p-8 space-y-6">
+            <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+              <div className="p-8 space-y-6">
                 <div>
-                  <Label htmlFor="name">{t.campaignName} *</Label>
+                  <Label htmlFor="name" style={{ color: colors.text }}>{t.campaignName} *</Label>
                   <Input
                     id="name"
                     placeholder={t.campaignNamePlaceholder}
                     value={campaignData.name}
                     onChange={(e) => setCampaignData({ ...campaignData, name: e.target.value })}
                     className="mt-2"
+                    style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="goal">{t.campaignGoal}</Label>
+                  <Label htmlFor="goal" style={{ color: colors.text }}>{t.campaignGoal}</Label>
                   <Select
                     value={campaignData.goal}
                     onValueChange={(value) => setCampaignData({ ...campaignData, goal: value })}
@@ -816,7 +857,7 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="industry">{t.industry}</Label>
+                  <Label htmlFor="industry" style={{ color: colors.text }}>{t.industry}</Label>
                   <Select
                     value={campaignData.industry}
                     onValueChange={(value) => setCampaignData({ ...campaignData, industry: value })}
@@ -840,18 +881,19 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description">{t.campaignDescription}</Label>
+                  <Label htmlFor="description" style={{ color: colors.text }}>{t.campaignDescription}</Label>
                   <Textarea
                     id="description"
                     placeholder={t.campaignDescriptionPlaceholder}
                     value={campaignData.description}
                     onChange={(e) => setCampaignData({ ...campaignData, description: e.target.value })}
                     className="mt-2 min-h-[80px]"
+                    style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="tags">{t.tags}</Label>
+                  <Label htmlFor="tags" style={{ color: colors.text }}>{t.tags}</Label>
                   <Input
                     id="tags"
                     placeholder={t.tagsPlaceholder}
@@ -861,23 +903,24 @@ export default function CreateCampaignPage() {
                       ...prev,
                       tags: e.target.value.split(",").map(tag => tag.trim()).filter(Boolean)
                     }))}
+                    style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                   />
-                  <p className="text-xs text-gray-500 mt-1">{t.tagsHint}</p>
+                  <p className="text-xs mt-1" style={{ color: colors.textMuted }}>{t.tagsHint}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Step 3: Target Audience */}
         {currentStep === 2 && (
           <div className="max-w-4xl mx-auto space-y-6">
-            <Card>
-              <CardContent className="p-8 space-y-6">
+            <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+              <div className="p-8 space-y-6">
 
                 {/* ===== AUDIENCE TYPE SELECTOR ===== */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">{t.whoReceives}</h3>
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: colors.heading }}>{t.whoReceives}</h3>
                   <div className="space-y-2">
                     {[
                       { value: 'all', label: t.allContacts, desc: t.allContactsDesc },
@@ -889,10 +932,12 @@ export default function CreateCampaignPage() {
                       <label
                         key={option.value}
                         className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          audienceType === option.value
-                            ? 'border-purple-400 bg-purple-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          audienceType === option.value ? 'border-purple-400' : ''
                         }`}
+                        style={audienceType === option.value
+                          ? { background: theme === 'dark' ? '#2d2340' : '#f5f3ff' }
+                          : { background: colors.cardBg, borderColor: colors.border }
+                        }
                       >
                         <input
                           type="radio"
@@ -909,8 +954,8 @@ export default function CreateCampaignPage() {
                           className="mt-1 accent-purple-500"
                         />
                         <div>
-                          <div className="font-medium text-gray-800">{option.label}</div>
-                          <div className="text-sm text-gray-500">{option.desc}</div>
+                          <div className="font-medium" style={{ color: colors.text }}>{option.label}</div>
+                          <div className="text-sm" style={{ color: colors.textSecondary }}>{option.desc}</div>
                         </div>
                       </label>
                     ))}
@@ -920,17 +965,19 @@ export default function CreateCampaignPage() {
                 {/* ===== CSV LIST SELECTOR ===== */}
                 {audienceType === 'csv' && (
                   <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-gray-700 mb-3">{t.selectCSVList}</h4>
+                    <h4 className="font-medium mb-3" style={{ color: colors.text }}>{t.selectCSVList}</h4>
                     {availableCsvLists.length > 0 ? (
                       <div className="space-y-2">
                         {availableCsvLists.map((list: any) => (
                           <label
                             key={list.csvListId}
                             className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedCsvListId === list.csvListId
-                                ? 'border-blue-400 bg-blue-100'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
+                              selectedCsvListId === list.csvListId ? 'border-blue-400' : ''
                             }`}
+                            style={selectedCsvListId === list.csvListId
+                              ? { background: theme === 'dark' ? '#1a2a3a' : '#dbeafe' }
+                              : { background: colors.cardBg, borderColor: colors.border }
+                            }
                           >
                             <div className="flex items-center gap-2">
                               <input
@@ -947,9 +994,9 @@ export default function CreateCampaignPage() {
                                 }}
                                 className="accent-blue-500"
                               />
-                              <span className="font-medium text-gray-700">{list.csvListId}</span>
+                              <span className="font-medium" style={{ color: colors.text }}>{list.csvListId}</span>
                             </div>
-                            <span className="text-sm text-gray-500">{list.count} {t.contacts}</span>
+                            <span className="text-sm" style={{ color: colors.textSecondary }}>{list.count} {t.contacts}</span>
                           </label>
                         ))}
                       </div>
@@ -958,8 +1005,8 @@ export default function CreateCampaignPage() {
                         <svg className="w-10 h-10 text-blue-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
-                        <p className="text-gray-500 text-sm mb-3">{t.noCSVLists}</p>
-                        <p className="text-gray-400 text-xs mb-4">{t.noCSVListsHint}</p>
+                        <p className="text-sm mb-3" style={{ color: colors.textSecondary }}>{t.noCSVLists}</p>
+                        <p className="text-xs mb-4" style={{ color: colors.textMuted }}>{t.noCSVListsHint}</p>
                         <button
                           type="button"
                           onClick={() => window.open('/contacts?action=import', '_blank')}
@@ -980,7 +1027,7 @@ export default function CreateCampaignPage() {
                 {/* ===== GROUPS SELECTOR ===== */}
                 {audienceType === 'groups' && (
                   <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-gray-700 mb-3">{t.selectGroups}</h4>
+                    <h4 className="font-medium mb-3" style={{ color: colors.text }}>{t.selectGroups}</h4>
                     {availableGroups.length > 0 ? (
                       <div>
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -999,10 +1046,9 @@ export default function CreateCampaignPage() {
                                 }))
                               }}
                               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                selectedGroups.includes(group)
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-white text-gray-700 border border-gray-300 hover:border-green-400'
+                                selectedGroups.includes(group) ? 'bg-green-500 text-white' : ''
                               }`}
+                              style={!selectedGroups.includes(group) ? { background: colors.cardBg, color: colors.text, border: '1px solid ' + colors.border } : {}}
                             >
                               {group}
                               {selectedGroups.includes(group) && (
@@ -1022,8 +1068,8 @@ export default function CreateCampaignPage() {
                         <svg className="w-10 h-10 text-green-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                         </svg>
-                        <p className="text-gray-500 text-sm mb-3">{t.noGroups}</p>
-                        <p className="text-gray-400 text-xs">{t.noGroupsHint}</p>
+                        <p className="text-sm mb-3" style={{ color: colors.textSecondary }}>{t.noGroups}</p>
+                        <p className="text-xs" style={{ color: colors.textMuted }}>{t.noGroupsHint}</p>
                       </div>
                     )}
                   </div>
@@ -1032,7 +1078,7 @@ export default function CreateCampaignPage() {
                 {/* ===== SINGLE CONTACT ===== */}
                 {audienceType === 'single' && (
                   <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-medium text-gray-700 mb-3">{t.selectContact}</h4>
+                    <h4 className="font-medium mb-3" style={{ color: colors.text }}>{t.selectContact}</h4>
 
                     {/* Search Input */}
                     <div className="relative mb-3">
@@ -1044,7 +1090,8 @@ export default function CreateCampaignPage() {
                           searchContacts(e.target.value);
                         }}
                         placeholder={t.searchContact}
-                        className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                        className="w-full px-4 py-2.5 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                        style={{ background: colors.inputBg, color: colors.inputText, border: '1px solid ' + colors.inputBorder }}
                       />
                       <svg className="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -1073,10 +1120,11 @@ export default function CreateCampaignPage() {
                                 audience: { ...prev.audience, audienceType: 'single', singleContactId: c._id }
                               }));
                             }}
-                            className="w-full text-right p-2.5 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
+                            className="w-full text-right p-2.5 rounded-lg transition-all text-sm"
+                            style={{ background: colors.cardBg, border: '1px solid ' + colors.border, color: colors.text }}
                           >
-                            <div className="font-medium text-gray-700">{c.name || c.firstName || c.email || t.noName}</div>
-                            <div className="text-xs text-gray-400">
+                            <div className="font-medium" style={{ color: colors.text }}>{c.name || c.firstName || c.email || t.noName}</div>
+                            <div className="text-xs" style={{ color: colors.textMuted }}>
                               {c.email && <span>{c.email}</span>}
                               {c.email && c.phone && <span> | </span>}
                               {c.phone && <span>{c.phone}</span>}
@@ -1090,8 +1138,8 @@ export default function CreateCampaignPage() {
                     {selectedSingleContact && (
                       <div className="p-3 rounded-lg border-2 border-purple-400 bg-purple-100 flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-gray-700">{selectedSingleContact.name || selectedSingleContact.firstName || selectedSingleContact.email}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="font-medium" style={{ color: colors.text }}>{selectedSingleContact.name || selectedSingleContact.firstName || selectedSingleContact.email}</div>
+                          <div className="text-xs" style={{ color: colors.textSecondary }}>
                             {selectedSingleContact.email}
                             {selectedSingleContact.phone && ` | ${selectedSingleContact.phone}`}
                           </div>
@@ -1112,7 +1160,7 @@ export default function CreateCampaignPage() {
                     )}
 
                     {!selectedSingleContact && singleContactResults.length === 0 && singleContactSearch.length === 0 && (
-                      <p className="text-gray-400 text-xs text-center">{t.typeToSearch}</p>
+                      <p className="text-xs text-center" style={{ color: colors.textMuted }}>{t.typeToSearch}</p>
                     )}
                   </div>
                 )}
@@ -1121,7 +1169,7 @@ export default function CreateCampaignPage() {
                 {audienceType === 'filter' && (
                   <div className="mb-6 space-y-6">
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">{t.temperatureTargeting}</Label>
+                      <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.temperatureTargeting}</Label>
                       <div className="space-y-3">
                         {[
                           { value: "cold", label: t.cold },
@@ -1154,7 +1202,7 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">{t.sourceFilters}</Label>
+                      <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.sourceFilters}</Label>
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { value: "csv", label: "CSV Import" },
@@ -1190,13 +1238,14 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold mb-4 block">{t.advancedFilters}</Label>
+                      <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.advancedFilters}</Label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="filter-industry">{t.industry}</Label>
+                          <Label htmlFor="filter-industry" style={{ color: colors.text }}>{t.industry}</Label>
                           <Input
                             id="filter-industry"
                             placeholder="Technology"
+                            style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                             className="mt-2"
                             value={campaignData.audience.filters.industry}
                             onChange={(e) => setCampaignData(prev => ({
@@ -1206,11 +1255,12 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-location">{t.location}</Label>
+                          <Label htmlFor="filter-location" style={{ color: colors.text }}>{t.location}</Label>
                           <Input
                             id="filter-location"
                             placeholder="Dubai, UAE"
                             className="mt-2"
+                            style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                             value={campaignData.audience.filters.location}
                             onChange={(e) => setCampaignData(prev => ({
                               ...prev,
@@ -1219,11 +1269,12 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-tags">{t.tags}</Label>
+                          <Label htmlFor="filter-tags" style={{ color: colors.text }}>{t.tags}</Label>
                           <Input
                             id="filter-tags"
                             placeholder="VIP, Interested"
                             className="mt-2"
+                            style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                             value={campaignData.audience.filters.tags}
                             onChange={(e) => setCampaignData(prev => ({
                               ...prev,
@@ -1232,11 +1283,12 @@ export default function CreateCampaignPage() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="filter-groups">{t.groups}</Label>
+                          <Label htmlFor="filter-groups" style={{ color: colors.text }}>{t.groups}</Label>
                           <Input
                             id="filter-groups"
                             placeholder="Q4 Leads"
                             className="mt-2"
+                            style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                             value={campaignData.audience.filters.groups}
                             onChange={(e) => setCampaignData(prev => ({
                               ...prev,
@@ -1250,17 +1302,16 @@ export default function CreateCampaignPage() {
                 )}
 
                 {/* ===== AUDIENCE COUNT DISPLAY ===== */}
-                <div className={`mt-6 p-4 rounded-lg border-2 ${
-                  audienceCount !== null && audienceCount > 0
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-gray-200 bg-gray-50'
-                }`}>
+                <div className="mt-6 p-4 rounded-lg border-2" style={audienceCount !== null && audienceCount > 0
+                  ? { borderColor: '#86efac', background: theme === 'dark' ? '#14291f' : '#f0fdf4' }
+                  : { borderColor: colors.border, background: colors.surfaceBg }
+                }>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <span className="font-semibold text-gray-700">
+                      <span className="font-semibold" style={{ color: colors.text }}>
                         {audienceLoading ? t.counting : `${audienceCount !== null ? audienceCount.toLocaleString() : '—'} ${t.contactsWillReceive}`}
                       </span>
                     </div>
@@ -1275,8 +1326,8 @@ export default function CreateCampaignPage() {
                   </div>
 
                   {audienceCount !== null && audienceCount > 0 && audienceBreakdown?.byTemperature && Object.keys(audienceBreakdown.byTemperature).length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 mb-2">{t.breakdownByTemp}</div>
+                    <div className="mt-3 pt-3 border-t" style={{ borderColor: colors.border }}>
+                      <div className="text-xs mb-2" style={{ color: colors.textSecondary }}>{t.breakdownByTemp}</div>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(audienceBreakdown.byTemperature).map(([temp, count]: [string, any]) => (
                           <span key={temp} className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1295,7 +1346,7 @@ export default function CreateCampaignPage() {
 
                 {/* ===== EXCLUSIONS (always visible) ===== */}
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">{t.exclusions}</Label>
+                  <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.exclusions}</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -1339,39 +1390,37 @@ export default function CreateCampaignPage() {
                   </div>
                 </div>
 
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Step 4: Sequence Builder */}
         {currentStep === 3 && (
           <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardContent className="p-8">
+            <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+              <div className="p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold mb-2">{t.emailSequence}</h3>
-                  <p className="text-gray-600">{t.preFilledFromTemplate}</p>
+                  <h3 className="text-xl font-bold mb-2" style={{ color: colors.heading }}>{t.emailSequence}</h3>
+                  <p style={{ color: colors.textSecondary }}>{t.preFilledFromTemplate}</p>
                 </div>
 
                 {/* Toggle: Linear vs Smart Sequence */}
                 <div className="flex gap-2 mb-6">
                   <button
                     className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      sequenceType === "linear"
-                        ? "bg-purple-100 border-purple-400 text-purple-700"
-                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                      sequenceType === "linear" ? "bg-purple-100 border-purple-400 text-purple-700" : ""
                     }`}
+                    style={sequenceType !== "linear" ? { background: colors.cardBg, borderColor: colors.border, color: colors.textSecondary } : {}}
                     onClick={() => setSequenceType("linear")}
                   >
                     <List className="w-4 h-4 inline mr-1" /> {t.linearSequence}
                   </button>
                   <button
                     className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      sequenceType === "graph"
-                        ? "bg-purple-100 border-purple-400 text-purple-700"
-                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                      sequenceType === "graph" ? "bg-purple-100 border-purple-400 text-purple-700" : ""
                     }`}
+                    style={sequenceType !== "graph" ? { background: colors.cardBg, borderColor: colors.border, color: colors.textSecondary } : {}}
                     onClick={() => setSequenceType("graph")}
                   >
                     <GitBranch className="w-4 h-4 inline mr-1" /> {t.smartSequence}
@@ -1402,8 +1451,8 @@ export default function CreateCampaignPage() {
                     step.type === "wait" ? (
                       <div key={`wait-${stepIndex}`} className="flex items-center justify-center py-2">
                         <div className="flex flex-col items-center">
-                          <div className="w-0.5 h-4 bg-gray-300"></div>
-                          <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
+                          <div className="w-0.5 h-4" style={{ background: colors.border }}></div>
+                          <div className="flex items-center gap-3 rounded-full px-4 py-2" style={{ background: colors.surfaceBg, border: '1px solid ' + colors.border }}>
                             <Clock className="w-4 h-4 text-gray-500" />
                             <Button
                               variant="ghost"
@@ -1417,7 +1466,7 @@ export default function CreateCampaignPage() {
                             >
                               -
                             </Button>
-                            <span className="text-sm font-medium text-gray-600 min-w-[60px] text-center">
+                            <span className="text-sm font-medium min-w-[60px] text-center" style={{ color: colors.textSecondary }}>
                               {step.waitDays} {step.waitDays === 1 ? t.days.replace('أيام', 'يوم').replace('days', 'day') : t.days}
                             </span>
                             <Button
@@ -1433,24 +1482,28 @@ export default function CreateCampaignPage() {
                               +
                             </Button>
                           </div>
-                          <div className="w-0.5 h-4 bg-gray-300"></div>
+                          <div className="w-0.5 h-4" style={{ background: colors.border }}></div>
                         </div>
                       </div>
                     ) : (
-                      <Card key={`email-${stepIndex}`} className={`border-l-4 ${
+                      <div
+                        key={`email-${stepIndex}`}
+                        className={`rounded-xl border-l-4 ${
                         step.emailIndex === 0
                           ? "border-l-[#7C3AED]"
                           : step.emailIndex === sequenceSteps.filter(s => s.type === "email").length - 1
                             ? "border-l-[#EF4444]"
                             : "border-l-[#3B82F6]"
-                      }`}>
-                        <CardContent className="p-4">
+                      }`}
+                        style={{ background: colors.cardBg, border: '1px solid ' + colors.border }}
+                      >
+                        <div className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="font-semibold text-gray-900">
+                              <h4 className="font-semibold" style={{ color: colors.heading }}>
                                 EMAIL {(step.emailIndex ?? 0) + 1}: {t.day} {getCumulativeDay(stepIndex)} - {step.label?.replace(/EMAIL \d+/, '').trim() || (step.emailIndex === 0 ? t.initial : t.followUpLabel)}
                               </h4>
-                              <p className="text-sm text-gray-600 mt-1">
+                              <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                                 {emailEdits[step.emailIndex ?? 0]?.subject || step.subject || "(no subject)"}
                               </p>
                             </div>
@@ -1498,8 +1551,8 @@ export default function CreateCampaignPage() {
                               </Button>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )
                     )
                   })}
@@ -1538,7 +1591,7 @@ export default function CreateCampaignPage() {
                 )}
 
                 <div className="mt-8 space-y-3">
-                  <Label className="font-semibold">{t.sequenceSettings}</Label>
+                  <Label className="font-semibold" style={{ color: colors.heading }}>{t.sequenceSettings}</Label>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="stop-reply"
@@ -1579,8 +1632,8 @@ export default function CreateCampaignPage() {
                     </Label>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1590,16 +1643,16 @@ export default function CreateCampaignPage() {
             {emailEdits.map((edit, index) => {
               const templateEmail = selectedTemplate?.structure?.[index]
               return (
-                <Card key={index}>
-                  <CardContent className="p-8 space-y-6">
+                <div key={index} className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                  <div className="p-8 space-y-6">
                     <div>
-                      <h3 className="text-xl font-bold mb-2">
+                      <h3 className="text-xl font-bold mb-2" style={{ color: colors.heading }}>
                         Email {index + 1}: {templateEmail?.type?.replace("_", " ") || "Email"} ({t.day} {templateEmail?.day ?? index})
                       </h3>
                     </div>
 
                     <div>
-                      <Label htmlFor={`subject-${index}`}>{t.subjectLine}</Label>
+                      <Label htmlFor={`subject-${index}`} style={{ color: colors.text }}>{t.subjectLine}</Label>
                       <Input
                         id={`subject-${index}`}
                         placeholder={templateEmail?.subject || t.subjectPlaceholder}
@@ -1610,6 +1663,7 @@ export default function CreateCampaignPage() {
                           updated[index] = { ...updated[index], subject: e.target.value }
                           setEmailEdits(updated)
                         }}
+                        style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                       />
                       {index === 0 && (
                         <div className="mt-3 p-3 bg-blue-50 rounded-lg">
@@ -1624,7 +1678,7 @@ export default function CreateCampaignPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor={`body-${index}`}>{t.emailBodyLabel}</Label>
+                      <Label htmlFor={`body-${index}`} style={{ color: colors.text }}>{t.emailBodyLabel}</Label>
                       <Textarea
                         id={`body-${index}`}
                         className="mt-2 font-mono text-sm"
@@ -1636,17 +1690,19 @@ export default function CreateCampaignPage() {
                           updated[index] = { ...updated[index], body: e.target.value }
                           setEmailEdits(updated)
                         }}
+                        style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}
                       />
-                      <div className="mt-3 text-xs text-gray-500">
+                      <div className="mt-3 text-xs" style={{ color: colors.textSecondary }}>
                         <p className="mb-2">
-                          <strong>{t.variablesAvailable}</strong> <span className="text-gray-400">{t.clickToInsert}</span>
+                          <strong>{t.variablesAvailable}</strong> <span style={{ color: colors.textMuted }}>{t.clickToInsert}</span>
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {["{{firstName}}", "{{lastName}}", "{{company}}", "{{industry}}", "{{location}}", "{{achievement}}", "{{pain_point}}", "{{specific_detail}}", "{{yourName}}", "{{yourTitle}}"].map((variable) => (
                             <button
                               key={variable}
                               type="button"
-                              className="text-xs px-2 py-1 bg-gray-100 hover:bg-purple-50 hover:text-purple-600 rounded transition-colors cursor-pointer"
+                              className="text-xs px-2 py-1 hover:bg-purple-50 hover:text-purple-600 rounded transition-colors cursor-pointer"
+                              style={{ background: colors.surfaceBg, color: colors.text }}
                               onClick={() => {
                                 setEmailEdits(prev => prev.map((ed, i) =>
                                   i === index
@@ -1665,8 +1721,8 @@ export default function CreateCampaignPage() {
                     {!edit.subject.trim() || !edit.body.trim() ? (
                       <p className="text-sm text-red-500">{t.fillSubjectAndBody}</p>
                     ) : null}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )
             })}
           </div>
@@ -1676,12 +1732,12 @@ export default function CreateCampaignPage() {
         {currentStep === 5 && (
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Email Account Selection */}
-            <Card>
-              <CardContent className="p-8 space-y-4">
-                <Label className="text-lg font-semibold mb-4 block">{t.emailAccount}</Label>
+            <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+              <div className="p-8 space-y-4">
+                <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.emailAccount}</Label>
                 {emailAccounts.length > 0 ? (
                   <Select value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
-                    <SelectTrigger>
+                    <SelectTrigger style={{ background: colors.inputBg, color: colors.inputText, borderColor: colors.inputBorder }}>
                       <SelectValue placeholder={t.selectEmailAccount} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1693,19 +1749,17 @@ export default function CreateCampaignPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Card className="bg-yellow-50 border-yellow-200">
-                    <CardContent className="p-4 text-sm text-yellow-900">
-                      {t.noEmailAccounts}
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-lg p-4 text-sm text-yellow-900 bg-yellow-50 border border-yellow-200">
+                    {t.noEmailAccounts}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="p-8 space-y-8">
+            <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+              <div className="p-8 space-y-8">
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">{t.sendSchedule}</Label>
+                  <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.sendSchedule}</Label>
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
@@ -1794,7 +1848,7 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">{t.sendLimits}</Label>
+                  <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.sendLimits}</Label>
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="daily-limit">{t.dailyLimit}</Label>
@@ -1843,7 +1897,7 @@ export default function CreateCampaignPage() {
                 </div>
 
                 <div>
-                  <Label className="text-lg font-semibold mb-4 block">{t.tracking}</Label>
+                  <Label className="text-lg font-semibold mb-4 block" style={{ color: colors.heading }}>{t.tracking}</Label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -1899,8 +1953,8 @@ export default function CreateCampaignPage() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1908,15 +1962,15 @@ export default function CreateCampaignPage() {
         {currentStep === 6 && (
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: colors.heading }}>
                     <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </span>
                     {t.details}
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                     <p>
                       <strong>{t.name}:</strong> {campaignData.name || t.notSet}
                     </p>
@@ -1936,18 +1990,18 @@ export default function CreateCampaignPage() {
                       <strong>{t.template}:</strong> {selectedTemplate?.name || t.noneSelected}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: colors.heading }}>
                     <span className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </span>
                     {t.audience}
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                     <p>
                       <strong>{t.audienceType}:</strong>{" "}
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
@@ -1982,22 +2036,22 @@ export default function CreateCampaignPage() {
                       <strong>{t.estimatedContacts}:</strong>{" "}
                       {audienceCount !== null
                         ? <span className="text-green-600 font-semibold">{audienceCount.toLocaleString()} {t.contacts}</span>
-                        : <span className="text-gray-400">{t.notCalculated}</span>
+                        : <span style={{ color: colors.textMuted }}>{t.notCalculated}</span>
                       }
                     </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: colors.heading }}>
                     <span className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </span>
                     {t.sequence}
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                     <p>
                       <strong>
                         {sequenceSteps.filter(s => s.type === "email").length} {t.emailsOver} {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} {t.days}
@@ -2009,18 +2063,18 @@ export default function CreateCampaignPage() {
                       </p>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <div className="rounded-xl border" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: colors.heading }}>
                     <span className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
                       <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </span>
                     {t.settings}
                   </h3>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                     <p>
                       <strong>{t.sendTime}:</strong> {campaignData.sendSchedule.sendTime === "best" ? t.bestTimeLabel : campaignData.sendSchedule.sendTime === "specific" ? campaignData.sendSchedule.specificTime : t.randomTimeLabel}
                     </p>
@@ -2043,14 +2097,14 @@ export default function CreateCampaignPage() {
                       <strong>{t.trackClicksLabel}:</strong> {campaignData.tracking.clicks ? t.yes : t.no}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
-            <Card className="bg-purple-50 border-[#7C3AED]">
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-4">{t.campaignSummary}</h3>
-                <div className="space-y-2 text-sm">
+            <div className="rounded-xl border border-[#7C3AED]" style={{ background: theme === 'dark' ? '#1e1535' : '#faf5ff' }}>
+              <div className="p-6">
+                <h3 className="font-bold text-lg mb-4" style={{ color: colors.heading }}>{t.campaignSummary}</h3>
+                <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                   <p>
                     <strong>{t.totalEmailsInSequence}:</strong> {sequenceSteps.filter(s => s.type === "email").length}
                   </p>
@@ -2060,10 +2114,10 @@ export default function CreateCampaignPage() {
                   <p>
                     <strong>{t.estimatedDuration}:</strong> {sequenceSteps.filter(s => s.type === "wait").reduce((sum, s) => sum + (s.waitDays || 0), 0)} {t.days}
                   </p>
-                  <p className="text-gray-500 mt-2">{t.resultsAfterLaunch}</p>
+                  <p className="mt-2" style={{ color: colors.textSecondary }}>{t.resultsAfterLaunch}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {(() => {
               const validations = {
@@ -2085,10 +2139,10 @@ export default function CreateCampaignPage() {
                 { key: "hasDays" as const, label: t.checkDays },
               ]
               return (
-                <Card className="border-green-200">
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-lg mb-4">{t.preLaunchChecklist} ({passedCount}/{totalCount} {t.passed})</h3>
-                    <div className="space-y-2 text-sm">
+                <div className="rounded-xl border border-green-200" style={{ background: colors.cardBg, borderColor: colors.border }}>
+                  <div className="p-6">
+                    <h3 className="font-bold text-lg mb-4" style={{ color: colors.heading }}>{t.preLaunchChecklist} ({passedCount}/{totalCount} {t.passed})</h3>
+                    <div className="space-y-2 text-sm" style={{ color: colors.text }}>
                       {checkItems.map((item) => (
                         <div key={item.key} className="flex items-center gap-2">
                           {validations[item.key] ? (
@@ -2100,9 +2154,9 @@ export default function CreateCampaignPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-3">{t.spamScoreNote}</p>
-                  </CardContent>
-                </Card>
+                    <p className="text-xs mt-3" style={{ color: colors.textMuted }}>{t.spamScoreNote}</p>
+                  </div>
+                </div>
               )
             })()}
           </div>
@@ -2110,13 +2164,13 @@ export default function CreateCampaignPage() {
       </div>
 
       {/* Navigation Buttons */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+      <div className="sticky bottom-0 p-4" style={{ background: colors.cardBg, borderTop: '1px solid ' + colors.border }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
             {t.back}
           </Button>
 
-          <div className="text-sm text-gray-600">
+          <div className="text-sm" style={{ color: colors.textSecondary }}>
             {t.stepOf} {currentStep + 1} {t.of} {steps.length}
           </div>
 
@@ -2197,10 +2251,10 @@ export default function CreateCampaignPage() {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold mb-2">{t.campaignLaunched}</h2>
-            <p className="text-gray-600 mb-4">
+            <p className="mb-4" style={{ color: colors.textSecondary }}>
               {t.campaignLive} &quot;{campaignData.name || t.notSet}&quot; {t.campaignLiveEnd}
             </p>
-            <div className="space-y-1 text-sm text-gray-500 mb-6">
+            <div className="space-y-1 text-sm mb-6" style={{ color: colors.textSecondary }}>
               <p>{t.dailyLimitLabel}: {campaignData.sendSchedule.dailyLimit} {t.emailsPerDay}</p>
               <p>{t.sequence}: {sequenceSteps.filter(s => s.type === "email").length} {t.emails}</p>
             </div>
@@ -2233,52 +2287,50 @@ export default function CreateCampaignPage() {
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           onClick={() => setShowPreview(false)}
         >
-          <Card className="max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <CardContent className="p-0">
-              <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{previewTemplate.name}</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {previewTemplate.emails} {t.emails} {t.emailsOver} {previewTemplate.days} {t.days}
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
-                  <X className="w-6 h-6" />
-                </Button>
+          <div className="max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-xl" style={{ background: colors.cardBg }} onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 flex items-center justify-between sticky top-0 rounded-t-xl" style={{ background: colors.cardBg, borderBottom: '1px solid ' + colors.border }}>
+              <div>
+                <h2 className="text-2xl font-bold" style={{ color: colors.heading }}>{previewTemplate.name}</h2>
+                <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                  {previewTemplate.emails} {t.emails} {t.emailsOver} {previewTemplate.days} {t.days}
+                </p>
               </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
 
-              <div className="p-6 space-y-4">
-                {previewTemplate.structure?.map((step: any, index: number) => (
-                  <div key={index} className="border-l-4 border-[#7C3AED] pl-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-purple-100 text-[#7C3AED]">
-                        {t.day} {step.day} - {step.type.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    <div className="text-sm font-semibold text-gray-700 mb-1">{t.subject}: {step.subject}</div>
-                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded whitespace-pre-line">
-                      {step.body || `Sample email content for ${step.type}...`}
-                    </div>
+            <div className="p-6 space-y-4">
+              {previewTemplate.structure?.map((step: any, index: number) => (
+                <div key={index} className="border-l-4 border-[#7C3AED] pl-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className="bg-purple-100 text-[#7C3AED]">
+                      {t.day} {step.day} - {step.type.replace("_", " ")}
+                    </Badge>
                   </div>
-                ))}
-              </div>
+                  <div className="text-sm font-semibold mb-1" style={{ color: colors.text }}>{t.subject}: {step.subject}</div>
+                  <div className="text-sm p-3 rounded whitespace-pre-line" style={{ color: colors.textSecondary, background: colors.surfaceBg }}>
+                    {step.body || `Sample email content for ${step.type}...`}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-              <div className="p-6 border-t flex gap-3">
-                <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowPreview(false)}>
-                  {t.cancel}
-                </Button>
-                <Button
-                  className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
-                  onClick={() => {
-                    handleTemplateSelect(previewTemplate)
-                    setShowPreview(false)
-                  }}
-                >
-                  {t.useThisTemplate}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="p-6 flex gap-3" style={{ borderTop: '1px solid ' + colors.border }}>
+              <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowPreview(false)}>
+                {t.cancel}
+              </Button>
+              <Button
+                className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9]"
+                onClick={() => {
+                  handleTemplateSelect(previewTemplate)
+                  setShowPreview(false)
+                }}
+              >
+                {t.useThisTemplate}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

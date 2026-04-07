@@ -9,8 +9,10 @@ export default function CampaignsPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlLang = urlParams.get('lang')
+    const urlTheme = urlParams.get('theme')
     const lang = urlLang || localStorage.getItem('triggerio_language') || 'ar'
-    router.replace(`/campaigns/create?lang=${lang}`)
+    const theme = urlTheme || localStorage.getItem('triggerio_theme') || 'light'
+    router.replace(`/campaigns/create?lang=${lang}&theme=${theme}`)
   }, [router])
 
   return null

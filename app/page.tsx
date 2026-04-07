@@ -17,10 +17,15 @@ export default function Home() {
     if (urlLang === 'ar' || urlLang === 'en') {
       localStorage.setItem('triggerio_language', urlLang)
     }
+    const urlTheme = urlParams.get('theme')
+    if (urlTheme === 'light' || urlTheme === 'dark') {
+      localStorage.setItem('triggerio_theme', urlTheme)
+    }
 
-    // Pass lang to the create page so it reads it correctly
+    // Pass lang and theme to the create page so it reads them correctly
     const lang = urlLang || localStorage.getItem('triggerio_language') || 'ar'
-    router.replace(`/campaigns/create?lang=${lang}`)
+    const theme = urlTheme || localStorage.getItem('triggerio_theme') || 'light'
+    router.replace(`/campaigns/create?lang=${lang}&theme=${theme}`)
   }, [router])
 
   return null
