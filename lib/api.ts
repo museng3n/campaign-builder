@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://triggerio-backend.onrender.com"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.triggerio.io"
 
 function getHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("triggerio_token") : null
