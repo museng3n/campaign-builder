@@ -37,6 +37,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Anti-flash theme script — applies dark class before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              const theme = localStorage.getItem('theme');
+              if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+              }
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlTheme = urlParams.get('theme');
+              if (urlTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+              }
+            } catch(e) {}
+          })();
+        ` }} />
+      </head>
       <body className="font-sans antialiased">
         {children}
         <Toaster />
