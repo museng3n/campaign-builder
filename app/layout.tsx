@@ -36,7 +36,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // 📝 GHL-74 FIX 1G: بلا lang/dir ثابتين — يضبطهما الكود بعد الترطيب (سبب #418 من نوع HTML)
+    <html suppressHydrationWarning>
       <head>
         {/* 📝 GHL-74: سكربت منع الوميض الموحّد — الإشارة الوحيدة هي class="dark" */}
         <script

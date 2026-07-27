@@ -35,18 +35,32 @@ const steps = [
 export default function CreateCampaignPage() {
   const { toast } = useToast()
 
-  // Language state - initialized synchronously to prevent flash of wrong language
-  const [language, setLanguage] = useState<'ar' | 'en'>(() => {
-    if (typeof window === 'undefined') return 'ar'
-    const urlLang = new URLSearchParams(window.location.search).get('lang')
-    if (urlLang === 'ar' || urlLang === 'en') return urlLang as 'ar' | 'en'
-    const stored = localStorage.getItem('triggerio_language')
-    if (stored === 'ar' || stored === 'en') return stored as 'ar' | 'en'
-    return 'ar'
-  })
+  // 📝 GHL-74 FIX 1G: قيمة ابتدائية ثابتة — القراءة انتقلت إلى useEffect أدناه
+  // (الافتراضي 'ar' كما كان تماماً)
+  const [language, setLanguage] = useState<'ar' | 'en'>('ar')
 
   // 📝 GHL-74: الثيم يُدار حصرياً عبر النظام الموحّد في lib/theme.js
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  // 📝 GHL-74 FIX 1G: بوابة الترطيب — تمنع خطأ React #418
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // 📝 GHL-74 FIX 1G: قراءة اللغة بعد الترطيب — بنفس ترتيب الأولوية الأصلي
+  // (معامل الرابط ثم التخزين المحلي بمفتاح triggerio_language)
+  useEffect(() => {
+    try {
+      const urlLang = new URLSearchParams(window.location.search).get('lang')
+      if (urlLang === 'ar' || urlLang === 'en') {
+        setLanguage(urlLang as 'ar' | 'en')
+        return
+      }
+      const stored = localStorage.getItem('triggerio_language')
+      if (stored === 'ar' || stored === 'en') {
+        setLanguage(stored as 'ar' | 'en')
+      }
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const initial = getInitialTheme();
@@ -644,6 +658,11 @@ export default function CreateCampaignPage() {
     inputBg: '#ffffff', inputText: '#374151', inputBorder: '#d1d5db',
     tableHeaderBg: '#f9fafb', tableRowHover: '#f3f4f6',
   };
+
+  // 📝 GHL-74 FIX 1G: قبل الترطيب — خلفية بلون الوضع فقط، بلا أي محتوى
+  if (!mounted) {
+    return <div className="min-h-screen bg-white dark:bg-[#1e1e2e]" />;
+  }
 
   return (
     <div className="min-h-screen" style={{ background: colors.pageBg, color: colors.text }} dir={language === 'ar' ? 'rtl' : 'ltr'}>
