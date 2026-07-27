@@ -18,6 +18,9 @@ import { useToast } from "@/hooks/use-toast"
 import SequenceFlowBuilder from "@/components/SequenceBuilder/SequenceFlowBuilder"
 import type { SequenceGraph } from "@/components/SequenceBuilder/SequenceFlowBuilder"
 import { translations } from "../../../src/translations"
+// GHL-74: unified theme system
+// @ts-ignore
+import { applyTheme, getInitialTheme, listenForThemeChanges } from '@/lib/theme';
 
 const steps = [
   { nameKey: "stepTemplate" },
@@ -42,18 +45,20 @@ export default function CreateCampaignPage() {
     return 'ar'
   })
 
-  // Theme state - initialized synchronously to prevent flash
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const urlTheme = new URLSearchParams(window.location.search).get('theme');
-    if (urlTheme === 'light' || urlTheme === 'dark') return urlTheme as 'light' | 'dark';
-    const stored = localStorage.getItem('triggerio_theme');
-    if (stored === 'light' || stored === 'dark') return stored as 'light' | 'dark';
-    return 'light';
-  });
-  if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
+  // 📝 GHL-74: الثيم يُدار حصرياً عبر النظام الموحّد في lib/theme.js
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const initial = getInitialTheme();
+    applyTheme(initial);
+    setTheme(initial as 'light' | 'dark');
+
+    const unsubscribe = listenForThemeChanges((newTheme: 'light' | 'dark') => {
+      setTheme(newTheme);
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Set document direction synchronously before first render
   if (typeof document !== 'undefined') {
@@ -84,14 +89,6 @@ export default function CreateCampaignPage() {
       if (event.data?.type === 'LANGUAGE_CHANGE') {
         setLanguage(event.data.language)
         localStorage.setItem('triggerio_language', event.data.language)
-      }
-      if (event.data?.type === 'THEME_CHANGE') {
-        const t = event.data.theme;
-        if (t === 'light' || t === 'dark') {
-          setTheme(t as 'light' | 'dark');
-          localStorage.setItem('triggerio_theme', t);
-          document.documentElement.setAttribute('data-theme', t);
-        }
       }
     }
     window.addEventListener('message', handleMessage)

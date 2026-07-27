@@ -36,24 +36,36 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Anti-flash theme script — applies dark class before first paint */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function() {
-            try {
-              const theme = localStorage.getItem('theme');
-              if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-              }
-              const urlParams = new URLSearchParams(window.location.search);
-              const urlTheme = urlParams.get('theme');
-              if (urlTheme === 'dark') {
-                document.documentElement.classList.add('dark');
-              }
-            } catch(e) {}
-          })();
-        ` }} />
+        {/* 📝 GHL-74: سكربت منع الوميض الموحّد — الإشارة الوحيدة هي class="dark" */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function(){
+  try{
+    var t = null;
+    // 1. الأولوية القصوى: معامل الرابط (الطريقة الوحيدة التي تعمل عبر iframe)
+    var q = new URLSearchParams(window.location.search).get('theme');
+    if (q === 'dark' || q === 'light') { t = q; }
+    // 2. الاحتياطي: التخزين المحلي
+    if (!t) { t = localStorage.getItem('triggerio_theme'); }
+    // 3. الأخير: تفضيل نظام التشغيل
+    if (t !== 'dark' && t !== 'light') {
+      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var d = document.documentElement;
+    // الإشارة الوحيدة — class فقط
+    if (t === 'dark') { d.classList.add('dark'); }
+    else { d.classList.remove('dark'); }
+    // خاصية متصفح لتلوين شريط التمرير والحقول
+    d.style.colorScheme = t;
+    localStorage.setItem('triggerio_theme', t);
+  }catch(e){}
+})();
+            `,
+          }}
+        />
       </head>
       <body className="font-sans antialiased">
         {children}

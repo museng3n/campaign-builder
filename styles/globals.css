@@ -1,7 +1,11 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
+/* 📝 GHL-74: خلفية الجذر — تمنع الوميض الأبيض قبل رسم المكوّنات */
+html { background-color: #ffffff; }
+html.dark { background-color: #1e1e2e; }
+
 
 :root {
   --background: oklch(1 0 0);
