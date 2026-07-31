@@ -36,8 +36,8 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-gray-600" />
-          <span className="text-sm font-bold text-gray-700">
+          <Mail className="w-4 h-4 text-gray-600 dark:text-[#a6adc8]" />
+          <span className="text-sm font-bold text-gray-700 dark:text-[#bac2de]">
             {categoryLabels[category] || "Email"}
           </span>
         </div>
@@ -46,7 +46,7 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-gray-400 hover:text-blue-500"
+              className="h-7 w-7 p-0 text-gray-400 dark:text-[#7f849c] hover:text-blue-500"
               onClick={() => onDuplicate(step.stepId)}
             >
               <Copy className="w-3.5 h-3.5" />
@@ -55,7 +55,7 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
+            className="h-7 w-7 p-0 text-gray-400 dark:text-[#7f849c] hover:text-red-500"
             onClick={() => onDelete(step.stepId)}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -68,7 +68,7 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
         value={category}
         onValueChange={(val) => onUpdate(step.stepId, { emailCategory: val })}
       >
-        <SelectTrigger className="h-8 text-xs mb-2 bg-white">
+        <SelectTrigger className="h-8 text-xs mb-2 bg-white dark:bg-[#1e1e2e]">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
@@ -83,7 +83,7 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
         placeholder="Email subject..."
         value={step.subject || ""}
         onChange={(e) => onUpdate(step.stepId, { subject: e.target.value })}
-        className="text-sm mb-2 bg-white"
+        className="text-sm mb-2 bg-white dark:bg-[#1e1e2e]"
       />
 
       {/* Body */}
@@ -91,7 +91,7 @@ export default function EmailNode({ step, onUpdate, onDelete, onDuplicate }: Ema
         placeholder="Email body..."
         value={step.body || ""}
         onChange={(e) => onUpdate(step.stepId, { body: e.target.value })}
-        className="text-sm min-h-[80px] bg-white resize-none"
+        className="text-sm min-h-[80px] bg-white dark:bg-[#1e1e2e] resize-none"
         rows={3}
       />
     </div>

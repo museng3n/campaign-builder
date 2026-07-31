@@ -41,7 +41,7 @@ export default function ConditionNode({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
+            className="h-7 w-7 p-0 text-gray-400 dark:text-[#7f849c] hover:text-red-500"
             onClick={() => onDelete(step.stepId)}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -53,7 +53,7 @@ export default function ConditionNode({
           value={condition.type || "opened"}
           onValueChange={(val) => updateCondition("type", val)}
         >
-          <SelectTrigger className="h-8 text-xs mb-2 bg-white">
+          <SelectTrigger className="h-8 text-xs mb-2 bg-white dark:bg-[#1e1e2e]">
             <SelectValue placeholder="Select condition" />
           </SelectTrigger>
           <SelectContent>
@@ -69,7 +69,7 @@ export default function ConditionNode({
           value={condition.checkStepId || ""}
           onValueChange={(val) => updateCondition("checkStepId", val)}
         >
-          <SelectTrigger className="h-8 text-xs mb-2 bg-white">
+          <SelectTrigger className="h-8 text-xs mb-2 bg-white dark:bg-[#1e1e2e]">
             <SelectValue placeholder="Check which email?" />
           </SelectTrigger>
           <SelectContent>
@@ -83,16 +83,16 @@ export default function ConditionNode({
 
         {/* Wait days before check */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 whitespace-nowrap">Wait</span>
+          <span className="text-xs text-gray-500 dark:text-[#9399b2] whitespace-nowrap">Wait</span>
           <Input
             type="number"
             min={1}
             max={30}
             value={condition.waitDaysBeforeCheck || 1}
             onChange={(e) => updateCondition("waitDaysBeforeCheck", parseInt(e.target.value) || 1)}
-            className="h-8 text-xs w-16 bg-white"
+            className="h-8 text-xs w-16 bg-white dark:bg-[#1e1e2e]"
           />
-          <span className="text-xs text-gray-500">days before checking</span>
+          <span className="text-xs text-gray-500 dark:text-[#9399b2]">days before checking</span>
         </div>
       </div>
 

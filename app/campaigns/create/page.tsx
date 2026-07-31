@@ -526,7 +526,7 @@ export default function CreateCampaignPage() {
     return ''
   }
 
-  const API_BASE = 'https://triggerio-backend.onrender.com'
+  const API_BASE = 'https://api.triggerio.io'
 
   const fetchAudienceCount = async () => {
     // For single contact, count is 1 if selected, 0 if not
@@ -692,7 +692,7 @@ export default function CreateCampaignPage() {
                         ? "bg-[#7C3AED] text-white cursor-pointer"
                         : index === currentStep
                           ? "bg-[#7C3AED] text-white cursor-pointer"
-                          : "bg-gray-200 text-gray-500 cursor-not-allowed opacity-50"
+                          : "bg-gray-200 dark:bg-[#313244] text-gray-500 dark:text-[#9399b2] cursor-not-allowed opacity-50"
                     }`}
                     onClick={() => {
                       if (index <= currentStep) {
@@ -1109,7 +1109,7 @@ export default function CreateCampaignPage() {
                         className="w-full px-4 py-2.5 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
                         style={{ background: colors.inputBg, color: colors.inputText, border: '1px solid ' + colors.inputBorder }}
                       />
-                      <svg className="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <svg className="w-4 h-4 text-gray-400 dark:text-[#7f849c] absolute right-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                       </svg>
                     </div>
@@ -1350,7 +1350,7 @@ export default function CreateCampaignPage() {
                             temp === 'hot' ? 'bg-red-100 text-red-700' :
                             temp === 'warm' ? 'bg-orange-100 text-orange-700' :
                             temp === 'cold' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
+                            'bg-gray-100 dark:bg-[#313244] text-gray-700 dark:text-[#bac2de]'
                           }`}>
                             {temp.charAt(0).toUpperCase() + temp.slice(1)}: {count}
                           </span>
@@ -1469,11 +1469,11 @@ export default function CreateCampaignPage() {
                         <div className="flex flex-col items-center">
                           <div className="w-0.5 h-4" style={{ background: colors.border }}></div>
                           <div className="flex items-center gap-3 rounded-full px-4 py-2" style={{ background: colors.surfaceBg, border: '1px solid ' + colors.border }}>
-                            <Clock className="w-4 h-4 text-gray-500" />
+                            <Clock className="w-4 h-4 text-gray-500 dark:text-[#9399b2]" />
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                              className="h-6 w-6 p-0 text-gray-400 dark:text-[#7f849c] hover:text-gray-600"
                               onClick={() => {
                                 setSequenceSteps(prev => prev.map((s, i) =>
                                   i === stepIndex ? { ...s, waitDays: Math.max(1, (s.waitDays || 1) - 1) } : s
@@ -1488,7 +1488,7 @@ export default function CreateCampaignPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                              className="h-6 w-6 p-0 text-gray-400 dark:text-[#7f849c] hover:text-gray-600"
                               onClick={() => {
                                 setSequenceSteps(prev => prev.map((s, i) =>
                                   i === stepIndex ? { ...s, waitDays: (s.waitDays || 1) + 1 } : s

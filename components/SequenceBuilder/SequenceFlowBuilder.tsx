@@ -260,7 +260,7 @@ export default function SequenceFlowBuilder({ steps, startStepId, onChange }: Se
       <div className="flex flex-col items-center min-w-[400px]">
         {steps.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4 text-sm">Start building your smart sequence</p>
+            <p className="text-gray-500 dark:text-[#9399b2] mb-4 text-sm">Start building your smart sequence</p>
             <AddNodeButton onAdd={(type) => createStep(type)} />
           </div>
         ) : (

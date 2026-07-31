@@ -23,27 +23,27 @@ export default function AddNodeButton({ onAdd }: AddNodeButtonProps) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 hover:border-purple-400 flex items-center justify-center text-gray-400 hover:text-purple-500 transition-all duration-300 hover:bg-purple-50"
+        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 dark:border-[#45475a] hover:border-purple-400 flex items-center justify-center text-gray-400 dark:text-[#7f849c] hover:text-purple-500 transition-all duration-300 hover:bg-purple-50"
       >
         <Plus className="w-4 h-4" />
       </button>
 
       {open && (
-        <div className="absolute z-50 top-10 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
+        <div className="absolute z-50 top-10 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-[#313244] rounded-lg shadow-lg py-1 min-w-[180px]">
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-[#bac2de] hover:bg-purple-50 hover:text-purple-600 transition-colors"
             onClick={() => { onAdd("email"); setOpen(false) }}
           >
             <Mail className="w-4 h-4" /> Add Email Step
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-600 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-[#bac2de] hover:bg-gray-50 dark:hover:bg-[#313244] hover:text-gray-600 transition-colors"
             onClick={() => { onAdd("wait"); setOpen(false) }}
           >
             <Clock className="w-4 h-4" /> Add Wait Step
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-[#bac2de] hover:bg-orange-50 hover:text-orange-600 transition-colors"
             onClick={() => { onAdd("condition"); setOpen(false) }}
           >
             <GitBranch className="w-4 h-4" /> Add Condition
